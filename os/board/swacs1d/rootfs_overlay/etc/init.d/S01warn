@@ -1,0 +1,15 @@
+#!/bin/sh
+
+if ! blkid -t PARTLABEL=GAME >/dev/null 2>&1; then
+    printf "\033[2J\033[H\n\n\n\n"
+    printf "          ==================================================\n"
+    printf "                               WARNING!\n"
+    printf "          ==================================================\n\n"
+    printf "          This board hasn't been yet initialized/provisioned.\n\n"
+    printf "          For distributor: Now is the time to plug in the\n"
+    printf "          factory provision USB device to the board.\n\n"
+    printf "          For operator: Please contact the distributor and\n"
+    printf "          send the board back to them.\n\n"
+    printf "          A .bundle file (either patch or upgrade) will NOT WORK!\n\n"
+    printf "          ==================================================\n"
+fi

@@ -1,0 +1,14 @@
+#!/bin/sh
+# Only start if the game drive is actually there and mounted
+if [ -d "/opt/game" ]; then
+    echo "Launching bootstrap..."
+    # Start X server in background: no cursor, quiet, on display :0
+    X -nocursor -quiet &
+    export DISPLAY=:0
+    
+    # Wait for X to be ready
+    while ! xset q > /dev/null 2>&1; do sleep 0.1; done
+
+    # Launch the Rust game (binary name: bootstrap)
+    /opt/game/bootstrap &
+fi
