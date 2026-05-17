@@ -1,0 +1,40 @@
+#!/bin/bash
+DRIVE=$(mount | grep "on / " | cut -d' ' -f1 | sed 's/[0-9]*$//')
+USB_MNT="/mnt/usb"
+
+if ! blkid -t PARTLABEL=GAME >/dev/null 2>&1; then
+    mkdir -p $USB_MNT
+    # Loop until the setup file is found
+    while true; do
+        mount /dev/sdb1 $USB_MNT 2>/dev/null || mount /dev/sda1 $USB_MNT 2>/dev/null
+        [ -f "$USB_MNT/factory_provision.tar.zst" ] && break
+        sleep 2
+    done
+
+    # 1. Expand Disk & Create GPT Partitions
+    sgdisk -n 3:0:+128M -c 3:"SCORE" -t 3:8300 "$DRIVE"
+    sgdisk -n 4:0:0     -c 4:"GAME"  -t 4:8300 "$DRIVE"
+    partprobe "$DRIVE" && udevadm settle
+
+    # 2. Format Score Partition (Read/Write)
+    mkfs.ext4 -L "SCORE" "${DRIVE}3"
+
+    # 3. Encrypt Game Partition and Bind to TPM
+    PASS=$(openssl rand -hex 32)
+    echo -n "$PASS" | cryptsetup luksFormat "${DRIVE}4" -d -
+    echo -n "$PASS" | cryptsetup luksOpen "${DRIVE}4" game_init -d -
+    mkfs.ext4 /dev/mapper/game_init && mount /dev/mapper/game_init /mnt
+    
+    # 4. Extract Game Data and Security Keys for future updates
+    tar --zstd -xf "$USB_MNT/factory_provision.tar.zst" -C /mnt
+    sync && umount /mnt && cryptsetup luksClose game_init
+
+    # 5. Seal key to TPM (Permanent Handle 0x81010002)
+    tpm2_createprimary -C o -c primary.ctx
+    echo -n "$PASS" | tpm2_create -C primary.ctx -u obj.pub -r obj.priv -i-
+    tpm2_load -C primary.ctx -u obj.pub -r obj.priv -c load.ctx
+    tpm2_evictcontrol -C o -c load.ctx 0x81010002
+    
+    echo "Provisioning Complete. Rebooting..."
+    reboot
+fi
