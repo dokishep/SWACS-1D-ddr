@@ -10,18 +10,19 @@ echo "POST-IMAGE: Preparing EFI directory structure..."
 
 mkdir -p "${EFI_DIR}"
 
-# Copy the compiled Grub EFI binary
-if [ -f "${BINARIES_DIR}/grub-efi.bin" ]; then
-    cp "${BINARIES_DIR}/grub-efi.bin" "${EFI_DIR}/BOOTX64.EFI"
+# Buildroot automatically creates bootx64.efi. We just verify it's there.
+if [ -f "${EFI_DIR}/bootx64.efi" ]; then
+    echo "POST-IMAGE: bootx64.efi found."
 else
-    echo "ERROR: grub-efi.bin not found! Check your defconfig for BR2_TARGET_GRUB2_X86_64_EFI"
+    echo "ERROR: bootx64.efi not found in ${EFI_DIR}!"
+    ls -la "${BINARIES_DIR}"
     exit 1
 fi
 
 # Copy the grub config
 cp "${BOARD_DIR}/grub.cfg" "${EFI_DIR}/grub.cfg"
 
-# Copy the kernel
+# Copy the kernel so it sits in the VFAT partition
 cp "${BINARIES_DIR}/bzImage" "${BINARIES_DIR}/efi-part/bzImage"
 
 echo "POST-IMAGE: EFI structure complete."
