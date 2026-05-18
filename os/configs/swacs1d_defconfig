@@ -9,7 +9,7 @@ BR2_SYSTEM_DHCP="eth0"
 BR2_ROOTFS_DEVICE_CREATION_DYNAMIC_EUDEV=y
 BR2_INIT_BUSYBOX=y
 
-# X11 & Graphics (Legacy options removed)
+# X11 & Graphics
 BR2_PACKAGE_XSERVER_XORG_SERVER=y
 BR2_PACKAGE_XAPP_XMESSAGE=y
 BR2_PACKAGE_XF86_VIDEO_INTEL=y
@@ -49,10 +49,10 @@ BR2_PACKAGE_OPENSSL=y
 BR2_PACKAGE_JQ=y
 BR2_PACKAGE_ZSTD=y
 
-# Bootloader (squash4 is the correct grub module name)
+# Bootloader (FIXED: Using the new _EFI variable name)
 BR2_TARGET_GRUB2=y
 BR2_TARGET_GRUB2_X86_64_EFI=y
-BR2_TARGET_GRUB2_BUILTIN_MODULES="boot linux ext2 fat squash4 part_gpt normal efi_gop"
+BR2_TARGET_GRUB2_BUILTIN_MODULES_EFI="boot linux ext2 fat squash4 part_gpt normal efi_gop"
 
 # Image Generation & Scripts
 BR2_TARGET_ROOTFS_SQUASHFS=y
