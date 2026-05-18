@@ -53,11 +53,16 @@ BR2_PACKAGE_OPENSSL=y
 BR2_PACKAGE_JQ=y
 BR2_PACKAGE_ZSTD=y
 
-# Image Generation
+# Bootloader (NEW: Required to fix EFI error)
+BR2_TARGET_GRUB2=y
+BR2_TARGET_GRUB2_X86_64_EFI=y
+
+# Image Generation & Scripts
 BR2_TARGET_ROOTFS_SQUASHFS=y
 BR2_PACKAGE_HOST_GENIMAGE=y
-BR2_ROOTFS_POST_IMAGE_SCRIPT="support/scripts/genimage.sh"
-# Path adjusted for CI moving 'board' into 'buildroot'
+
+# SCRIPT CHAINING: First run post-image to set up EFI, then genimage to build the img
+BR2_ROOTFS_POST_IMAGE_SCRIPT="board/swacs1d/post-image.sh support/scripts/genimage.sh"
 BR2_ROOTFS_POST_SCRIPT_ARGS="-c board/swacs1d/genimage.cfg"
 BR2_ROOTFS_OVERLAY="board/swacs1d/rootfs_overlay"
 

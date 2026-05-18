@@ -28,19 +28,21 @@ jobs:
         run: |
           git clone --depth 1 --branch 2024.02.x https://git.buildroot.net/buildroot
 
-      - name: Prep Board Files (Fixes Rsync Error)
+      - name: Prep Board Files
         run: |
-          # Copy your custom board and config files INTO the buildroot directory
-          cp -r os/board/swacs1d buildroot/board/
+          mkdir -p buildroot/board/swacs1d
+          cp -r os/board/swacs1d/* buildroot/board/swacs1d/
           cp os/configs/swacs1d_defconfig buildroot/configs/
+          
+          # GUARANTEE the script is executable
+          chmod +x buildroot/board/swacs1d/post-image.sh
 
       - name: Build OS
         run: |
           cd buildroot
           make swacs1d_defconfig
-          # Point Buildroot to the cache folder
           echo "BR2_DL_DIR=\"/home/runner/work/buildroot_dl\"" >> .config
-          make -j$(nproc)
+          make -j2
 
       - name: Save Download Cache
         if: always()
@@ -52,5 +54,5 @@ jobs:
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: SWACS-1D-OS-Image
+          name: SWACS-1D-Image
           path: buildroot/output/images/swacs1d.img
