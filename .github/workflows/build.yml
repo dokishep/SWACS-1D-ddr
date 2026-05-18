@@ -15,7 +15,7 @@ jobs:
       - name: Install Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential libncurses5-dev rsync cpio python3 unzip bc wget zstd libssl-dev file
+          sudo apt-get install -y build-essential libncurses5-dev rsync cpio python3 unzip bc wget zstd libssl-dev libelf-dev file
 
       - name: Restore Download Cache
         uses: actions/cache/restore@v4
