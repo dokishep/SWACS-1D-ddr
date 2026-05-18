@@ -65,6 +65,8 @@ BR2_TARGET_GRUB2_BUILTIN_MODULES_EFI="boot linux ext2 fat squash4 part_gpt norma
 # Image Generation & Scripts
 BR2_TARGET_ROOTFS_SQUASHFS=y
 BR2_PACKAGE_HOST_GENIMAGE=y
+BR2_PACKAGE_HOST_DOSFSTOOLS=y
+BR2_PACKAGE_HOST_MTOOLS=y
 BR2_ROOTFS_POST_IMAGE_SCRIPT="board/swacs1d/post-image.sh support/scripts/genimage.sh"
 BR2_ROOTFS_POST_SCRIPT_ARGS="-c board/swacs1d/genimage.cfg"
 BR2_ROOTFS_OVERLAY="board/swacs1d/rootfs_overlay"
