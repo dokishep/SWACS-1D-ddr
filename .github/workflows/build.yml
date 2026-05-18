@@ -26,22 +26,35 @@ jobs:
 
       - name: Clone Buildroot
         run: |
+          # Cloning the specific LTS branch for stability
           git clone --depth 1 --branch 2024.02.x https://git.buildroot.net/buildroot
 
       - name: Prep Board Files
         run: |
+          # 1. Create the target directory structure
           mkdir -p buildroot/board/swacs1d
+          
+          # 2. Copy your board-specific files into the Buildroot tree
           cp -r os/board/swacs1d/* buildroot/board/swacs1d/
           cp os/configs/swacs1d_defconfig buildroot/configs/
           
-          # GUARANTEE the script is executable
+          # 3. FIX LINE ENDINGS (Windows CRLF -> Linux LF)
+          # This removes the hidden '\r' that causes "Error 127: file not found"
+          find buildroot/board/swacs1d/ -name "*.sh" -exec sed -i 's/\r$//' {} +
+          
+          # 4. Guarantee scripts are executable
           chmod +x buildroot/board/swacs1d/post-image.sh
 
       - name: Build OS
         run: |
           cd buildroot
+          # Load your custom configuration
           make swacs1d_defconfig
+          
+          # Point Buildroot to the download cache folder
           echo "BR2_DL_DIR=\"/home/runner/work/buildroot_dl\"" >> .config
+          
+          # Build using 2 cores (optimal for GitHub standard runners)
           make -j2
 
       - name: Save Download Cache
