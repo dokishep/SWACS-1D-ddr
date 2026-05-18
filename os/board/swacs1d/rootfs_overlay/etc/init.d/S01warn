@@ -1,15 +1,28 @@
 #!/bin/sh
 
 if ! blkid -t PARTLABEL=GAME >/dev/null 2>&1; then
-    printf "\033[2J\033[H\n\n\n\n"
-    printf "          ==================================================\n"
-    printf "                               WARNING!\n"
-    printf "          ==================================================\n\n"
-    printf "          This board hasn't been yet initialized/provisioned.\n\n"
-    printf "          For distributor: Now is the time to plug in the\n"
-    printf "          factory provision USB device to the board.\n\n"
-    printf "          For operator: Please contact the distributor and\n"
-    printf "          send the board back to them.\n\n"
-    printf "          A .bundle file (either patch or upgrade) will NOT WORK!\n\n"
-    printf "          ==================================================\n"
+    # Start X server in background: no cursor, quiet, on display :0
+    X -nocursor -quiet &
+    export DISPLAY=:0
+    
+    # Wait for X to be ready
+    while ! xset q > /dev/null 2>&1; do sleep 0.1; done
+
+    # Display the warning message graphically via xmessage
+    xmessage -center -buttons "" -title "SWACS-1D OS - PROVISIONING REQUIRED" "
+==================================================
+                    WARNING!
+==================================================
+
+This board has not been initialized/provisioned yet.
+
+For distributor: Now is the time to plug in the
+factory provision USB device to the board.
+
+For operator: Please contact the distributor and
+send the board back to them.
+
+A .bundle file (either patch or upgrade) will NOT WORK!
+
+==================================================" &
 fi
