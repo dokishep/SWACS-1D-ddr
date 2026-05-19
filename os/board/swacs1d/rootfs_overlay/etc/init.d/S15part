@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 DRIVE=$(mount | grep "on / " | cut -d' ' -f1 | sed 's/[0-9]*$//')
 USB_MNT="/mnt/usb"
 
