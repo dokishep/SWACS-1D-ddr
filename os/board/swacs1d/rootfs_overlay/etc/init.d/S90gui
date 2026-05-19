@@ -1,7 +1,8 @@
 #!/bin/sh
+
 # Only start if the game drive is actually there and mounted
 if [ -d "/opt/game" ]; then
-    echo "Launching bootstrap..."
-    # Start the game binary inside a self-terminating X session in the background
-    startx /usr/bin/start_game.sh -- -nocursor -quiet &
+    echo "Launching game bootstrap..."
+    
+    /usr/bin/xinit /usr/bin/start_game.sh -- /usr/bin/Xorg :0 vt7 -nocursor -quiet -s 0 -dpms &
 fi

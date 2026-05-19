@@ -1,6 +1,10 @@
 #!/bin/sh
 
 if [ ! -b /dev/disk/by-partlabel/GAME ]; then
-    # Use xinit directly with absolute paths
-    /usr/bin/xinit /usr/bin/start_warn.sh -- /usr/bin/Xorg :0 -nocursor -quiet &
+    echo "Game drive missing. Launching warning screen..."
+    
+    # Run xinit. 
+    # vt7 prevents Xorg from fighting with the busybox getty on tty1
+    # -s 0 -dpms prevents the screen from going to sleep
+    /usr/bin/xinit /usr/bin/start_warn.sh -- /usr/bin/Xorg :0 vt7 -nocursor -quiet -s 0 -dpms &
 fi
