@@ -1,39 +1,6 @@
 #!/bin/sh
 
 if [ ! -b /dev/disk/by-partlabel/GAME ]; then
-    # Start X server in background: no cursor, quiet, on display :0
-    Xorg -nocursor -quiet &
-    export DISPLAY=:0
-    
-    # Wait for X to be ready
-    while ! xset q > /dev/null 2>&1; do sleep 0.1; done
-
-    # Configure screen to 640x480 at highest reported refresh rate
-    OUTPUT=$(xrandr | grep " connected" | cut -d' ' -f1 | head -n 1)
-    if [ -n "$OUTPUT" ]; then
-        HIGHEST_HZ=$(xrandr | grep -A 10 "$OUTPUT" | grep -w "640x480" | tr -s ' ' | cut -d' ' -f3- | tr ' ' '\n' | tr -d '*+' | sort -rg | head -n 1)
-        if [ -n "$HIGHEST_HZ" ]; then
-            xrandr --output "$OUTPUT" --mode 640x480 --rate "$HIGHEST_HZ"
-        else
-            xrandr --output "$OUTPUT" --mode 640x480
-        fi
-    fi
-
-    # Display the warning message graphically via xmessage
-    xmessage -center -buttons "" -title "SWACS-1D OS - PROVISIONING REQUIRED" "
-==================================================
-                    WARNING!
-==================================================
-
-This board has not been initialized/provisioned yet.
-
-For distributor: Now is the time to plug in the
-factory provision USB device to the board.
-
-For operator: Please contact the distributor and
-send the board back to them.
-
-A .bundle file (either patch or upgrade) will NOT WORK!
-
-==================================================" &
+    # Start the warning dialogue inside a self-terminating X session in the background
+    startx /usr/bin/start_warn.sh -- -nocursor -quiet &
 fi

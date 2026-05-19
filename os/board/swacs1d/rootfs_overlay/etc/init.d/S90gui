@@ -2,24 +2,6 @@
 # Only start if the game drive is actually there and mounted
 if [ -d "/opt/game" ]; then
     echo "Launching bootstrap..."
-    # Start X server in background: no cursor, quiet, on display :0
-    Xorg -nocursor -quiet &
-    export DISPLAY=:0
-    
-    # Wait for X to be ready
-    while ! xset q > /dev/null 2>&1; do sleep 0.1; done
-
-    # Configure screen to 640x480 at highest reported refresh rate
-    OUTPUT=$(xrandr | grep " connected" | cut -d' ' -f1 | head -n 1)
-    if [ -n "$OUTPUT" ]; then
-        HIGHEST_HZ=$(xrandr | grep -A 10 "$OUTPUT" | grep -w "640x480" | tr -s ' ' | cut -d' ' -f3- | tr ' ' '\n' | tr -d '*+' | sort -rg | head -n 1)
-        if [ -n "$HIGHEST_HZ" ]; then
-            xrandr --output "$OUTPUT" --mode 640x480 --rate "$HIGHEST_HZ"
-        else
-            xrandr --output "$OUTPUT" --mode 640x480
-        fi
-    fi
-
-    # Launch the Rust game (binary name: bootstrap)
-    /opt/game/bootstrap &
+    # Start the game binary inside a self-terminating X session in the background
+    startx /usr/bin/start_game.sh -- -nocursor -quiet &
 fi
