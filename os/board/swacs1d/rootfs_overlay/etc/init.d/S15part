@@ -2,7 +2,7 @@
 DRIVE=$(mount | grep "on / " | cut -d' ' -f1 | sed 's/[0-9]*$//')
 USB_MNT="/mnt/usb"
 
-if ! blkid -t PARTLABEL=GAME >/dev/null 2>&1; then
+if [ ! -b /dev/disk/by-partlabel/GAME ]; then
     mkdir -p $USB_MNT
     # Loop until the setup file is found
     while true; do

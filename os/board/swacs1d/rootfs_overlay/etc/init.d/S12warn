@@ -1,6 +1,6 @@
 #!/bin/sh
 
-if ! blkid -t PARTLABEL=GAME >/dev/null 2>&1; then
+if [ ! -b /dev/disk/by-partlabel/GAME ]; then
     # Start X server in background: no cursor, quiet, on display :0
     X -nocursor -quiet &
     export DISPLAY=:0
