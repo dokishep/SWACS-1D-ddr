@@ -3,7 +3,7 @@
 if [ -d "/opt/game" ]; then
     echo "Launching bootstrap..."
     # Start X server in background: no cursor, quiet, on display :0
-    X -nocursor -quiet &
+    Xorg -nocursor -quiet &
     export DISPLAY=:0
     
     # Wait for X to be ready
