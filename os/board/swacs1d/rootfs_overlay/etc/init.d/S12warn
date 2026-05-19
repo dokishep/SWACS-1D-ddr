@@ -1,6 +1,6 @@
 #!/bin/sh
 
 if [ ! -b /dev/disk/by-partlabel/GAME ]; then
-    # Start the warning dialogue inside a self-terminating X session in the background
-    startx /usr/bin/start_warn.sh -- -nocursor -quiet &
+    # Use xinit directly with absolute paths
+    /usr/bin/xinit /usr/bin/start_warn.sh -- /usr/bin/Xorg :0 -nocursor -quiet &
 fi
