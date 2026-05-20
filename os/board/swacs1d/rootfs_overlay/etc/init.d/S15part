@@ -5,10 +5,31 @@ USB_MNT="/tmp/usb"
 if [ ! -b /dev/disk/by-partlabel/GAME ]; then
     mkdir -p $USB_MNT
     # Loop until the setup file is found
-    while true; do
-        mount /dev/sdb1 $USB_MNT 2>/dev/null || mount /dev/sda1 $USB_MNT 2>/dev/null
-        [ -f "$USB_MNT/factory_provision.tar.zst" ] && break
-        sleep 2
+    FOUND_PROVISION=0
+    while [ "$FOUND_PROVISION" -eq 0 ]; do
+        BOOT_DEV_NAME=$(basename "$DRIVE" | sed 's/p*[0-9]*$//')
+        for dev in /dev/sd*; do
+            [ -b "$dev" ] || continue
+            
+            # Skip if this is part of the boot drive
+            case "$(basename "$dev")" in
+                ${BOOT_DEV_NAME}*) continue ;;
+            esac
+            
+            # Try mounting the device
+            if mount "$dev" "$USB_MNT" 2>/dev/null; then
+                if [ -f "$USB_MNT/factory_provision.tar.zst" ]; then
+                    FOUND_PROVISION=1
+                    break
+                fi
+                # Not the correct drive, unmount it immediately
+                umount "$USB_MNT" 2>/dev/null
+            fi
+        done
+        
+        if [ "$FOUND_PROVISION" -eq 0 ]; then
+            sleep 2
+        fi
     done
 
     # 1. Expand Disk & Create GPT Partitions
