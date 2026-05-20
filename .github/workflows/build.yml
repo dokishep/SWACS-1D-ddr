@@ -62,10 +62,12 @@ jobs:
         run: |
           set -euxo pipefail
 
-          # FIX: Prefix changed to match the actual binaries seen inside your 'bin' folder
           export CC=x86_64-unknown-linux-musl-gcc
           export CXX=x86_64-unknown-linux-musl-g++
           export CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=x86_64-unknown-linux-musl-gcc
+          
+          # FIX: Force CMake to disable the desktop window subsystem checks
+          export CMAKE_ARGS="-DSDL_X11=OFF -DSDL_WAYLAND=OFF"
 
           cargo build --release \
             --target x86_64-unknown-linux-musl \
