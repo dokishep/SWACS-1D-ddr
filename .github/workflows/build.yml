@@ -55,15 +55,17 @@ jobs:
 
           tar -xf musl.tar.xz
 
-          echo "$PWD/x86_64-linux-musl-cross/bin" >> $GITHUB_PATH
+          # FIX: Adjusted folder path to match the extracted folder layout shown in your screenshot
+          echo "$PWD/x86_64-unknown-linux-musl/bin" >> $GITHUB_PATH
 
       - name: Build Bootstrap Test Program
         run: |
           set -euxo pipefail
 
-          export CC=x86_64-linux-musl-gcc
-          export CXX=x86_64-linux-musl-g++
-          export CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=x86_64-linux-musl-gcc
+          # FIX: Prefix changed to match the actual binaries seen inside your 'bin' folder
+          export CC=x86_64-unknown-linux-musl-gcc
+          export CXX=x86_64-unknown-linux-musl-g++
+          export CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=x86_64-unknown-linux-musl-gcc
 
           cargo build --release \
             --target x86_64-unknown-linux-musl \
