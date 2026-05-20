@@ -108,7 +108,7 @@ jobs:
 
       - name: Clone Buildroot
         run: |
-          git clone --depth 1 --branch 2024.02.x https://git.buildroot.net/buildroot
+          git clone --depth 1 --branch 2025.02.x https://git.buildroot.net/buildroot
 
       - name: Prep Board Files
         run: |
