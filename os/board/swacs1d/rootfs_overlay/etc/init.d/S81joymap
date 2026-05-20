@@ -1,0 +1,50 @@
+#!/bin/sh
+# S81joymap.sh — Joystick → virtual keyboard mapper daemon for ddr-picker
+#
+# Reads /usr/lib/ddr/input-map.json and mirrors every entry with
+# "type": "joypad" onto a synthetic keyboard device via /dev/uinput.
+# This lets ddr-picker and pegasus-fe (which only understand keyboard
+# input) be driven by gamepad / cabinet buttons.
+#
+# Boot-order: S81 runs well after all js* devices have been enumerated
+# by the kernel.
+#
+# Dependencies: jq, python3, linux uinput module, /usr/libexec/joymapd
+
+SYS_MAP="/usr/lib/ddr/input-map.json"
+ETC_MAP="/etc/input-map.json"
+CONF_DIR="/var/run/joymap"
+PIDFILE="$CONF_DIR/joymapd.pid"
+
+start() {
+    # Pre-conditions
+    [ -f "$SYS_MAP" ] || [ -f "$ETC_MAP" ] || return 0
+    command -v jq         >/dev/null 2>&1 || return 0
+    command -v python3    >/dev/null 2>&1 || return 0
+    [ -c /dev/uinput ]    >/dev/null 2>&1 || return 0
+
+    mkdir -p "$CONF_DIR"
+
+    # Ensure a canonical copy always exists at /usr/lib/ddr for the daemon
+    [ -f "$SYS_MAP" ] || cp "$ETC_MAP" "$SYS_MAP"
+
+    # Don't start if already running
+    [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null && return 0
+
+    echo "joymap: starting joystick→keyboard mapper daemon…"
+    python3 /usr/libexec/joymapd "$SYS_MAP" >/var/log/joymapd.log 2>&1 &
+    echo $! > "$PIDFILE"
+}
+
+stop() {
+    [ -f "$PIDFILE" ] || return 0
+    kill "$(cat "$PIDFILE")" 2>/dev/null
+    rm -f "$PIDFILE"
+}
+
+case "$1" in
+    start)   start  ;;
+    stop)    stop   ;;
+    restart) stop; start ;;
+    *)       echo "usage: $0 {start|stop|restart}" ;;
+esac
