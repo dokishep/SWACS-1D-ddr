@@ -51,7 +51,7 @@ jobs:
 
           curl -fL --retry 5 --retry-delay 2 --retry-all-errors \
             -o musl.tgz \
-            https://musl.cc/x86_64-linux-musl-cross.tgz
+            https://more.musl.cc/x86_64-linux-musl/x86_64-linux-musl-cross.tgz
 
           tar -xzf musl.tgz
 
