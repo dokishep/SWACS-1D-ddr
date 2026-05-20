@@ -1,0 +1,18 @@
+# MAME System 573 DDR - Kernel configuration for low-latency rhythm gameplay
+
+# Preemptible kernel for low latency
+CONFIG_PREEMPT=y
+
+# 1000 Hz timer frequency for responsive input
+CONFIG_HZ_1000=y
+
+# No Hz timer optimizations
+CONFIG_NO_HZ=y
+CONFIG_NO_HZ_IDLE=y
+
+# Thread IRQ handlers for better latency
+CONFIG_IRQ_FORCED_THREADING=y
+
+# Audio latency optimizations
+CONFIG_SND_PCM_OSS=y
+CONFIG_SND_DYNAMIC_MINORS=y
