@@ -65,14 +65,11 @@ jobs:
           export CC=x86_64-unknown-linux-musl-gcc
           export CXX=x86_64-unknown-linux-musl-g++
           export CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=x86_64-unknown-linux-musl-gcc
-          
-          # FIX: Use CMAKE_CONFIGURE_ARGS so the Rust cmake crate forces these onto SDL3
-          export CMAKE_CONFIGURE_ARGS="-DSDL_X11=OFF -DSDL_WAYLAND=OFF -DSDL_VIDEO=ON"
 
           cargo build --release \
             --target x86_64-unknown-linux-musl \
             --manifest-path authoring/test/Cargo.toml
-
+            
       - name: Initialize Cryptographic Keys
         run: |
           chmod +x authoring/init_keys.sh
