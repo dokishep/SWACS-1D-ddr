@@ -51,6 +51,12 @@ if [ ! -b /dev/disk/by-partlabel/GAME ]; then
     sync && umount /mnt && cryptsetup luksClose game_init
 
     # 5. Seal key to TPM (Permanent Handle 0x81010002)
+    if [ -c /dev/tpmrm0 ]; then
+        export TPM2TOOLS_TCTI="device:/dev/tpmrm0"
+    elif [ -c /dev/tpm0 ]; then
+        export TPM2TOOLS_TCTI="device:/dev/tpm0"
+    fi
+
     tpm2_createprimary -C o -c primary.ctx
     echo -n "$PASS" | tpm2_create -C primary.ctx -u obj.pub -r obj.priv -i-
     tpm2_load -C primary.ctx -u obj.pub -r obj.priv -c load.ctx

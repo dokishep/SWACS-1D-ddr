@@ -20,6 +20,12 @@ fi
 
 # Unlock Game Partition via TPM
 if cryptsetup isLuks "$GAME_DEV"; then
+    if [ -c /dev/tpmrm0 ]; then
+        export TPM2TOOLS_TCTI="device:/dev/tpmrm0"
+    elif [ -c /dev/tpm0 ]; then
+        export TPM2TOOLS_TCTI="device:/dev/tpm0"
+    fi
+
     tpm2_unseal -c 0x81010002 | cryptsetup luksOpen "$GAME_DEV" game_crypt -d -
     mount -o ro,nosuid,nodev /dev/mapper/game_crypt /opt/game
 fi
