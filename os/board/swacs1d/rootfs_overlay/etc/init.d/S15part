@@ -1,8 +1,34 @@
 #!/bin/sh
-DRIVE=$(mount | grep "on / " | cut -d' ' -f1 | sed 's/[0-9]*$//')
+ROOT_DEV_MM=$(awk '$5 == "/" {print $3}' /proc/self/mountinfo)
+if [ -n "$ROOT_DEV_MM" ] && [ -d "/sys/dev/block/$ROOT_DEV_MM" ]; then
+    if [ -f "/sys/dev/block/$ROOT_DEV_MM/partition" ]; then
+        DRIVE="/dev/$(basename $(readlink -f /sys/dev/block/$ROOT_DEV_MM/..))"
+    else
+        DRIVE="/dev/$(basename $(readlink -f /sys/dev/block/$ROOT_DEV_MM))"
+    fi
+else
+    DRIVE=$(mount | grep "on / " | cut -d' ' -f1 | sed 's/[0-9]*$//')
+fi
 USB_MNT="/tmp/usb"
 
 if [ ! -b /dev/disk/by-partlabel/GAME ]; then
+    # Check TPM status before proceeding to prevent partitioning and file extraction on insecure hardware
+    if [ -c /dev/tpmrm0 ]; then
+        export TPM2TOOLS_TCTI="device:/dev/tpmrm0"
+    elif [ -c /dev/tpm0 ]; then
+        export TPM2TOOLS_TCTI="device:/dev/tpm0"
+    else
+        echo "FATAL ERROR: No TPM 2.0 device found (/dev/tpmrm0 or /dev/tpm0)!"
+        echo "Aborting provisioning to prevent insecure file deployment."
+        exit 1
+    fi
+
+    if ! tpm2_getcap properties-fixed >/dev/null 2>&1; then
+        echo "FATAL ERROR: TPM 2.0 is present but not responding or failed self-test!"
+        echo "Aborting provisioning to prevent insecure file deployment."
+        exit 1
+    fi
+
     mkdir -p $USB_MNT
     # Loop until the setup file is found
     FOUND_PROVISION=0
@@ -47,16 +73,10 @@ if [ ! -b /dev/disk/by-partlabel/GAME ]; then
     mkfs.ext4 /dev/mapper/game_init && mount /dev/mapper/game_init /mnt
     
     # 4. Extract Game Data and Security Keys for future updates
-    tar --zstd -xf "$USB_MNT/factory_provision.tar.zst" -C /mnt
+    zstd -d -c "$USB_MNT/factory_provision.tar.zst" | tar -xf - -C /mnt
     sync && umount /mnt && cryptsetup luksClose game_init
 
     # 5. Seal key to TPM (Permanent Handle 0x81010002)
-    if [ -c /dev/tpmrm0 ]; then
-        export TPM2TOOLS_TCTI="device:/dev/tpmrm0"
-    elif [ -c /dev/tpm0 ]; then
-        export TPM2TOOLS_TCTI="device:/dev/tpm0"
-    fi
-
     tpm2_createprimary -C o -c primary.ctx
     echo -n "$PASS" | tpm2_create -C primary.ctx -u obj.pub -r obj.priv -i-
     tpm2_load -C primary.ctx -u obj.pub -r obj.priv -c load.ctx
