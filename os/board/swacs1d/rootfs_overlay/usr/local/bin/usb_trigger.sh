@@ -1,5 +1,5 @@
 #!/bin/bash
-MOUNT_POINT="/mnt/usb"; STAGING="/tmp/staging"; GAME_DIR="/opt/game"
+MOUNT_POINT="/tmp/usb"; STAGING="/tmp/staging"; GAME_DIR="/opt/game"
 UPDATE_PUB_KEY="$GAME_DIR/keys/update_public.pem"
 UPDATE_AES_KEY="$GAME_DIR/keys/update_aes.key"
 

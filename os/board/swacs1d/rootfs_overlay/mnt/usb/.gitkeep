@@ -1,0 +1,1 @@
+# Keep this directory in git so that /mnt/usb exists in the read-only squashfs image.
