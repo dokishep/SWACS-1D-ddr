@@ -1,0 +1,25 @@
+# -------------------------------------------------
+# Rust / Cargo generated files – ignore these
+# -------------------------------------------------
+/target/                 # Build output (compiled binaries, libs, etc.)
+/**/target/              # In case of nested Cargo workspaces
+Cargo.lock               # Optional: ignore lock files for binary projects
+/.cargo/                 # Cargo configuration/cache
+
+# -------------------------------------------------
+# Common temporary / backup files
+# -------------------------------------------------
+*.rs.bk                  # Rust source backups
+*.log                    # Log files
+*.tmp                    # Generic temporary files
+
+# -------------------------------------------------
+# Cryptographic keys and packaging outputs (SWACS-1D)
+# -------------------------------------------------
+authoring/*.pem
+authoring/*.key
+authoring/*.zst
+authoring/*.bundle
+authoring/*.zip
+authoring/factory_payload/
+authoring/update_files/
