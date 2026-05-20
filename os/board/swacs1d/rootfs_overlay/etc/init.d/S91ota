@@ -1,0 +1,7 @@
+#!/bin/sh
+
+# Only start if the game drive is mounted (meaning the game directory exists)
+if [ -d "/opt/game" ]; then
+    echo "Starting OTA update daemon..."
+    /usr/local/bin/ota_trigger.sh &
+fi

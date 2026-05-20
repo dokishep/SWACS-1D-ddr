@@ -3,7 +3,20 @@ GAME_DEV="/dev/disk/by-partlabel/GAME"
 SCORE_DEV="/dev/disk/by-partlabel/SCORE"
 
 # Mount Score Partition for highscores
-[ -b "$SCORE_DEV" ] && mount -o rw,noatime "$SCORE_DEV" /var/data
+if [ -b "$SCORE_DEV" ]; then
+    mount -o rw,noatime "$SCORE_DEV" /var/data
+    
+    # Generate 8-digit cabinet ID if not already present
+    EXISTING_ID_FILE=$(find /var/data -maxdepth 1 -name "[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9].txt" | head -n 1)
+    if [ -z "$EXISTING_ID_FILE" ]; then
+        CABINET_ID=$(printf "%08d" $(( $(od -An -N4 -tu4 /dev/urandom) % 100000000 )))
+        echo "$CABINET_ID" > "/var/data/${CABINET_ID}.txt"
+        echo "Generated cabinet ID: $CABINET_ID"
+    else
+        CABINET_ID=$(basename "$EXISTING_ID_FILE" .txt)
+        echo "Found existing cabinet ID: $CABINET_ID"
+    fi
+fi
 
 # Unlock Game Partition via TPM
 if cryptsetup isLuks "$GAME_DEV"; then

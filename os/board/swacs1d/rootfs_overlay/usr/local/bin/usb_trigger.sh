@@ -18,6 +18,14 @@ CUR_VER=$(cat $GAME_DIR/.version 2>/dev/null || echo 0)
 # Apply update using AES key from the encrypted drive
 mount -o remount,rw $GAME_DIR
 openssl enc -d -aes-256-cbc -salt -pbkdf2 -pass file:"$UPDATE_AES_KEY" -in $STAGING/payload.enc | tar --zstd -x -C $GAME_DIR
+
+# Run custom update script if provided
+if [ -f "$GAME_DIR/update.sh" ]; then
+    chmod +x "$GAME_DIR/update.sh"
+    "$GAME_DIR/update.sh"
+    rm -f "$GAME_DIR/update.sh"
+fi
+
 echo "$NEW_VER" > $GAME_DIR/.version
 sync && mount -o remount,ro $GAME_DIR
 killall bootstrap
