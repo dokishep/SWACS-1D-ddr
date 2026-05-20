@@ -23,3 +23,4 @@ authoring/*.bundle
 authoring/*.zip
 authoring/factory_payload/
 authoring/update_files/
+/os/board/swacs1d/keys/

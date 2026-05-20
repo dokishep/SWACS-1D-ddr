@@ -24,7 +24,7 @@ jobs:
           sudo apt-get install -y \
             build-essential libncurses5-dev rsync cpio python3 unzip bc \
             wget zstd libssl-dev libelf-dev mtools dosfstools file \
-            curl ca-certificates git zip xz-utils
+            curl ca-certificates git zip xz-utils sbsigntool
 
       - name: Restore Download Cache
         uses: actions/cache/restore@v4
@@ -104,7 +104,9 @@ jobs:
       - name: Zip Provisioning Keys
         run: |
           cd authoring
-          zip test_factory_provision_keys.zip update_private.pem update_public.pem update_aes.key
+          cp ../os/board/swacs1d/keys/db.crt .
+          cp ../os/board/swacs1d/keys/db.der .
+          zip test_factory_provision_keys.zip update_private.pem update_public.pem update_aes.key db.crt db.der
 
       - name: Clone Buildroot
         run: |

@@ -22,7 +22,19 @@ fi
 # Copy the grub config
 cp "${BOARD_DIR}/grub.cfg" "${EFI_DIR}/grub.cfg"
 
-# Copy the kernel so it sits in the VFAT partition
-cp "${BINARIES_DIR}/bzImage" "${BINARIES_DIR}/efi-part/bzImage"
+# Sign the bootloader and kernel if keys and sbsign are present
+SB_KEY="${BOARD_DIR}/keys/db.key"
+SB_CRT="${BOARD_DIR}/keys/db.crt"
+
+if [ -f "$SB_KEY" ] && [ -f "$SB_CRT" ] && command -v sbsign >/dev/null 2>&1; then
+    echo "POST-IMAGE: Secure Boot keys found. Signing EFI bootloader..."
+    sbsign --key "$SB_KEY" --cert "$SB_CRT" --output "${EFI_DIR}/bootx64.efi" "${EFI_DIR}/bootx64.efi"
+
+    echo "POST-IMAGE: Signing Linux kernel..."
+    sbsign --key "$SB_KEY" --cert "$SB_CRT" --output "${BINARIES_DIR}/efi-part/bzImage" "${BINARIES_DIR}/bzImage"
+else
+    echo "POST-IMAGE: WARNING: Secure Boot keys or sbsign tool missing. Copying unsigned kernel."
+    cp "${BINARIES_DIR}/bzImage" "${BINARIES_DIR}/efi-part/bzImage"
+fi
 
 echo "POST-IMAGE: EFI structure complete."
