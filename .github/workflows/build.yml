@@ -50,10 +50,10 @@ jobs:
           set -euxo pipefail
 
           curl -fL --retry 5 --retry-delay 2 --retry-all-errors \
-            -o musl.tgz \
-            https://more.musl.cc/x86_64-linux-musl/x86_64-linux-musl-cross.tgz
+            -o musl.tar.xz \
+            https://github.com/cross-tools/musl-cross/releases/download/20260515/x86_64-unknown-linux-musl.tar.xz
 
-          tar -xzf musl.tgz
+          tar -xzf musl.tar.xz
 
           echo "$PWD/x86_64-linux-musl-cross/bin" >> $GITHUB_PATH
 
