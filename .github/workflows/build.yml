@@ -13,6 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -20,12 +21,15 @@ jobs:
       - name: Install Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential libncurses5-dev rsync cpio python3 unzip bc wget zstd libssl-dev libelf-dev mtools dosfstools file
+          sudo apt-get install -y \
+            build-essential libncurses5-dev rsync cpio python3 unzip bc \
+            wget zstd libssl-dev libelf-dev mtools dosfstools file \
+            curl ca-certificates git zip xz-utils
 
       - name: Restore Download Cache
         uses: actions/cache/restore@v4
         with:
-          path: ~/buildroot_dl
+          path: /home/runner/buildroot_dl
           key: br-dl-${{ hashFiles('os/configs/swacs1d_defconfig') }}
           restore-keys: br-dl-
 
@@ -43,16 +47,27 @@ jobs:
 
       - name: Install Musl Toolchain
         run: |
-          wget -q https://musl.cc/x86_64-linux-musl-cross.tgz
-          tar -xzf x86_64-linux-musl-cross.tgz
+          set -euxo pipefail
+
+          curl -fL --retry 5 --retry-delay 2 --retry-all-errors \
+            -o musl.tgz \
+            https://musl.cc/x86_64-linux-musl-cross.tgz
+
+          tar -xzf musl.tgz
+
           echo "$PWD/x86_64-linux-musl-cross/bin" >> $GITHUB_PATH
 
       - name: Build Bootstrap Test Program
         run: |
+          set -euxo pipefail
+
           export CC=x86_64-linux-musl-gcc
           export CXX=x86_64-linux-musl-g++
           export CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=x86_64-linux-musl-gcc
-          cargo build --release --target x86_64-unknown-linux-musl --manifest-path authoring/test/Cargo.toml
+
+          cargo build --release \
+            --target x86_64-unknown-linux-musl \
+            --manifest-path authoring/test/Cargo.toml
 
       - name: Initialize Cryptographic Keys
         run: |
@@ -61,32 +76,26 @@ jobs:
 
       - name: Create Factory Provision (v1.00)
         run: |
-          # 1. Create factory payload directories
           mkdir -p authoring/factory_payload/keys
-          
-          # 2. Copy the compiled bootstrap binary
-          cp authoring/test/target/x86_64-unknown-linux-musl/release/bootstrap authoring/factory_payload/bootstrap
-          
-          # 3. Write version 100
+
+          cp authoring/test/target/x86_64-unknown-linux-musl/release/bootstrap \
+             authoring/factory_payload/bootstrap
+
           echo "100" > authoring/factory_payload/.version
-          
-          # 4. Generate the factory provision tarball using the script
+
           chmod +x authoring/make_factory_provision.sh
           cd authoring
           ./make_factory_provision.sh
 
       - name: Create Update Bundle (v1.01)
         run: |
-          # 1. Create update directories
           mkdir -p authoring/update_files
-          
-          # 2. Copy the compiled bootstrap binary
-          cp authoring/test/target/x86_64-unknown-linux-musl/release/bootstrap authoring/update_files/bootstrap
-          
-          # 3. Copy example update script
+
+          cp authoring/test/target/x86_64-unknown-linux-musl/release/bootstrap \
+             authoring/update_files/bootstrap
+
           cp authoring/example_update.sh authoring/update_files/update.sh
-          
-          # 4. Generate the update bundle (v1.01) using the script
+
           chmod +x authoring/make_bundle.sh
           cd authoring
           ./make_bundle.sh 101
@@ -98,42 +107,35 @@ jobs:
 
       - name: Clone Buildroot
         run: |
-          # Cloning the specific LTS branch for stability
           git clone --depth 1 --branch 2024.02.x https://git.buildroot.net/buildroot
 
       - name: Prep Board Files
         run: |
-          # 1. Create the target directory structure
           mkdir -p buildroot/board/swacs1d
-          
-          # 2. Copy your board-specific files into the Buildroot tree
+
           cp -r os/board/swacs1d/* buildroot/board/swacs1d/
           cp os/configs/swacs1d_defconfig buildroot/configs/
-          
-          # 3. FIX LINE ENDINGS (Windows CRLF -> Linux LF)
-          # This removes the hidden '\r' that causes "Error 127: file not found"
+
           find buildroot/board/swacs1d/ -name "*.sh" -exec sed -i 's/\r$//' {} +
-          
-          # 4. Guarantee scripts are executable
           chmod +x buildroot/board/swacs1d/post-image.sh
 
       - name: Build OS
         run: |
+          set -euxo pipefail
+
           cd buildroot
-          # Load your custom configuration
+
           make swacs1d_defconfig
-          
-          # Point Buildroot to the download cache folder
-          echo "BR2_DL_DIR=\"/home/runner/buildroot_dl\"" >> .config
-          
-          # Build using 2 cores (optimal for GitHub standard runners)
+
+          echo 'BR2_DL_DIR="/home/runner/buildroot_dl"' >> .config
+
           make -j2
 
       - name: Save Download Cache
         if: always()
         uses: actions/cache/save@v4
         with:
-          path: ~/buildroot_dl
+          path: /home/runner/buildroot_dl
           key: br-dl-${{ hashFiles('os/configs/swacs1d_defconfig') }}
 
       - name: Save Ccache
@@ -145,7 +147,8 @@ jobs:
 
       - name: Compress Image
         run: |
-          xz -T0 -c buildroot/output/images/swacs1d.img > buildroot/output/images/swacs1d.img.xz
+          xz -T0 -c buildroot/output/images/swacs1d.img \
+            > buildroot/output/images/swacs1d.img.xz
 
       - name: Upload OS Image Artifact
         uses: actions/upload-artifact@v4
