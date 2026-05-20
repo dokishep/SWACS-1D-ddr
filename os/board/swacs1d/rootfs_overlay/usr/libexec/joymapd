@@ -1,0 +1,238 @@
+#!/usr/bin/python3
+"""
+joymapd — map joypad/gamepad buttons to keyboard events via /dev/uinput
+so that keyboard-only frontends (pegasus / ddr-picker) can be driven
+by gamepad buttons defined in /etc/input-map.json.
+
+Usage:
+    joymapd /etc/input-map.json
+    joymapd --list-devices
+"""
+
+import os
+import sys
+import json
+import struct
+import glob
+import time
+import select
+import fcntl
+import signal
+
+INPUT_PATH  = "/dev/input/event"
+UINPUT_PATH = "/dev/uinput"
+SYS_MAP     = "/usr/lib/ddr/input-map.json"
+ETC_MAP     = "/etc/input-map.json"
+MAP_FILE    = SYS_MAP if os.path.exists(SYS_MAP) else ETC_MAP
+
+# Linux input_event struct: timeval(2 long longs) + uint16 type + uint16 code + int32 value
+# Note: struct timeval on x86-64 = long sec + long usec = 2 × 8 bytes
+EV_FMT  = "llHHI"
+EV_SIZE = struct.calcsize(EV_FMT)
+
+# Linux uinput_user_dev (write format): no needs-to-be byte-perfect here for
+# UI_SET_EVBIT / UI_SET_KEYBIT we use ioctl only; for UI_DEV_CREATE we just
+# send enough bytes.
+UI_DEV_CREATE   = 0x5501
+UI_DEV_DESTROY  = 0x5502
+UI_SET_EVBIT    = 0x40045564
+UI_SET_KEYBIT   = 0x40045565
+UI_SET_RELBIT   = 0x40045566
+UI_ABS_CREATE   = 0x40045567
+
+EV_SYN  = 0x00
+EV_KEY  = 0x01
+
+# Linux kernel input-event key codes
+KEY_MAP = {
+    "Up":          103,
+    "Down":        108,
+    "Left":        105,
+    "Right":       106,
+    "Escape":       1,
+    "Enter":       28,
+    "Space":       57,
+    "Backspace":   14,
+    "Return":      28,
+    "F1":          59,
+    "F2":          60,
+    "F3":          61,
+    "F4":          62,
+}
+
+
+def open_uinput():
+    """Open /dev/uinput and configure it as a generic keyboard."""
+    fd = os.open(UINPUT_PATH, os.O_WRONLY | os.O_NONBLOCK)
+    # Tell the kernel we will output EV_KEY events
+    fcntl.ioctl(fd, UI_SET_EVBIT, struct.pack("H", EV_KEY))
+
+    # Register every key code we need from KEY_MAP
+    for key_name, key_code in KEY_MAP.items():
+        fcntl.ioctl(fd, UI_SET_KEYBIT, struct.pack("H", key_code))
+
+    # Create the device
+    name = b"joymapd virtual keyboard\x00" + b"\x00" * (256 - 28)
+    uname = name[:255]
+    dev = {
+        "bustype":   0x03,   # BUS_USB
+        "vendor":    0x0000,
+        "product":   0x0000,
+        "version":   0x0000,
+    }
+    packed = uname + \
+             struct.pack("HHI", dev["bustype"], dev["vendor"], dev["product"]) + \
+             struct.pack("I", dev["version"])
+    fcntl.ioctl(fd, UI_DEV_CREATE, packed)
+    return fd
+
+
+def find_gamepad_device():
+    """Return the first /dev/input/event* that looks like a gamepad / joystick."""
+    # Strategy A: sysfs joystick class — works for all kernel-level js* devices.
+    # Each /sys/class/input/jsN is a symlink to
+    #   /sys/class/input/eventN  or  /sys/class/input/inputN
+    # Climb one level to find the owning event node.
+    try:
+        sysfs_devs = sorted(glob.glob("/sys/class/input/js*"))
+        for d in sysfs_devs:
+            parent = os.path.dirname(os.path.realpath(d))
+            # Look for an eventN sibling / symlink inside the device dir
+            for ent in os.listdir(parent):
+                if ent.startswith("event"):
+                    return f"/dev/input/{ent}"
+    except Exception:
+        pass
+
+    # Strategy B: scan event nodes; look for ABS_* capability bits
+    candidates = sorted(glob.glob(f"{INPUT_PATH}[0-9]*"))
+    for path in candidates:
+        try:
+            fd = os.open(path, os.O_RDONLY | os.O_NONBLOCK)
+            abs_bits = fcntl.ioctl(fd, 0x80184504, b"\x00" * 64)  # EVIOCGBIT(EV_ABS, 64)
+            os.close(fd)
+            if any(abs_bits):   # non-zero word → has ABS axes → gamepad-like
+                return path
+        except Exception:
+            pass
+
+    # Strategy C: check /dev/input/by-id/ for known joystick device nodes
+    byid = sorted(glob.glob("/dev/input/by-id/*-event-joystick") +
+                  glob.glob("/dev/input/by-id/*-event-js"))
+    if byid:
+        try:
+            real = os.path.realpath(byid[0])
+            ev_name = os.path.basename(real)
+            return f"/dev/input/{ev_name}"
+        except Exception:
+            pass
+
+    return None
+
+
+def load_map(path):
+    """Return {joypad_button_index: linux_key_code} from input-map.json."""
+    mapping = {}
+    try:
+        with open(path) as f:
+            entries = json.load(f)
+    except Exception as e:
+        print(f"joymapd: failed to read {path}: {e}", file=sys.stderr)
+        return mapping
+
+    for name, entry in entries.items():
+        if entry.get("type") != "joypad":
+            continue
+        btn   = entry.get("button")
+        key   = entry.get("key")
+        if btn is None or key is None:
+            continue
+        key_code = KEY_MAP.get(key)
+        if key_code is None:
+            print(f"joymapd: unknown key '{key}' in {name}, skipping", file=sys.stderr)
+            continue
+        mapping[btn] = key_code
+
+    return mapping
+
+
+def write_event(fd, typ, code, value):
+    """Write a single Linux input_event struct to the uinput file descriptor."""
+    sec  = int(time.time())
+    usec = int((time.time() % 1) * 1_000_000)
+    data = struct.pack(EV_FMT, sec, usec, typ, code, value)
+    os.write(fd, data)
+
+
+def main():
+    map_file = MAP_FILE if os.path.exists(MAP_FILE) else sys.argv[1]
+
+    button_map = load_map(map_file)
+    if not button_map:
+        print("joymapd: no joypad button mappings found; exiting.", file=sys.stderr)
+        sys.exit(0)
+
+    gp_dev = find_gamepad_device()
+    if gp_dev is None:
+        print("joymapd: no gamepad device found, will retry in 3 s…", file=sys.stderr)
+        time.sleep(3)
+        gp_dev = find_gamepad_device()
+    if gp_dev is None:
+        print("joymapd: no gamepad found; exiting.", file=sys.stderr)
+        sys.exit(1)
+
+    print(f"joymapd: mapping gamepad '{gp_dev}' → virtual keyboard")
+    print(f"joymapd: button map: {button_map}")
+
+    gp_fd = os.open(gp_dev, os.O_RDONLY | os.O_NONBLOCK)
+    uinput_fd = open_uinput()
+
+    held_keys = {}   # joypad_btn_index → key_code  (currently pressed)
+
+    try:
+        while True:
+            r, _, _ = select.select([gp_fd], [], [], 1.0)
+            if not r:
+                continue
+
+            while True:
+                try:
+                    ev_bytes = os.read(gp_fd, EV_SIZE)
+                except BlockingIOError:
+                    break
+
+                if len(ev_bytes) < EV_SIZE:
+                    break
+
+                sec, usec, typ, code, value = struct.unpack(EV_FMT, ev_bytes)
+
+                if typ != EV_KEY:        # 0x01
+                    continue
+
+                if code not in button_map:
+                    continue
+
+                key_code = button_map[code]
+                if value:                # press
+                    held_keys[code] = key_code
+                    write_event(uinput_fd, EV_KEY, key_code, 1)
+                    write_event(uinput_fd, EV_SYN, 0, 0)
+                else:                    # release
+                    held_keys.pop(code, None)
+                    write_event(uinput_fd, EV_KEY, key_code, 0)
+                    write_event(uinput_fd, EV_SYN, 0, 0)
+
+                print(f"joymapd: btn {code} → key {key_code} value={value}")
+
+    except KeyboardInterrupt:
+        pass
+    finally:
+        for kc in held_keys.values():
+            write_event(uinput_fd, EV_KEY, kc, 0)
+            write_event(uinput_fd, EV_SYN, 0, 0)
+        os.close(uinput_fd)
+        os.close(gp_fd)
+
+
+if __name__ == "__main__":
+    main()

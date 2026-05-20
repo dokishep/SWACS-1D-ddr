@@ -1,0 +1,50 @@
+{
+  "step_left": {
+    "type": "joypad",
+    "button": 14,
+    "description": "Panel button left"},
+  "step_down": {
+    "type": "joypad",
+    "button": 13,
+    "description": "Panel button down"},
+  "step_up": {
+    "type": "joypad",
+    "button": 15,
+    "description": "Panel button up"},
+  "step_right": {
+    "type": "joypad",
+    "button": 12,
+    "description": "Panel button right"},
+  "service": {
+    "type": "joypad",
+    "button": 8,
+    "description": "Service (optional)"},
+  "test": {
+    "type": "joypad",
+    "button": 9,
+    "description": "Test (optional)"},
+  "coin": {
+    "type": "joypad",
+    "button": 0,
+    "description": "Coin input"},
+  "menu_up": {
+    "type": "joypad",
+    "button": 4,
+    "key": "Up",
+    "description": "Menu navigate up"},
+  "menu_down": {
+    "type": "joypad",
+    "button": 6,
+    "key": "Down",
+    "description": "Menu navigate down"},
+  "menu_select": {
+    "type": "joypad",
+    "button": 1,
+    "key": "Enter",
+    "description": "Menu select / confirm"},
+  "menu_back": {
+    "type": "joypad",
+    "button": 2,
+    "key": "Escape",
+    "description": "Menu back / cancel"}
+}
