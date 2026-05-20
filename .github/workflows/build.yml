@@ -66,8 +66,8 @@ jobs:
           export CXX=x86_64-unknown-linux-musl-g++
           export CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=x86_64-unknown-linux-musl-gcc
           
-          # FIX: Force CMake to disable the desktop window subsystem checks
-          export CMAKE_ARGS="-DSDL_X11=OFF -DSDL_WAYLAND=OFF"
+          # FIX: Use CMAKE_CONFIGURE_ARGS so the Rust cmake crate forces these onto SDL3
+          export CMAKE_CONFIGURE_ARGS="-DSDL_X11=OFF -DSDL_WAYLAND=OFF -DSDL_VIDEO=ON"
 
           cargo build --release \
             --target x86_64-unknown-linux-musl \
