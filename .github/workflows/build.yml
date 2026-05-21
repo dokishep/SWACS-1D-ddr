@@ -69,7 +69,9 @@ jobs:
           cp os/configs/rootddr_defconfig buildroot/configs/
 
           find buildroot/board/rootddr/ -name "*.sh" -exec sed -i 's/\r$//' {} +
-          chmod +x buildroot/board/rootddr/post-image.sh
+          if [ -f buildroot/board/rootddr/post-image.sh ]; then
+            chmod +x buildroot/board/rootddr/post-image.sh
+          fi
 
       - name: Build OS
         run: |
