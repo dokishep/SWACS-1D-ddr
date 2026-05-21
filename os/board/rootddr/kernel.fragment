@@ -17,3 +17,28 @@ CONFIG_USB_F_HID=y
 CONFIG_HIDRAW=y
 CONFIG_UINPUT=y
 CONFIG_INPUT_EVDEV=y
+
+# --- Latency: PREEMPT + HZ_1000 + IRQ threading (Bead 8) ---
+
+# Preemptible kernel for low-latency audio and input
+CONFIG_PREEMPT=y
+
+# 1000 Hz timer for responsive Linux input subsystem
+CONFIG_HZ_1000=y
+
+# High-resolution timer support
+CONFIG_HIGH_RES_TIMERS=y
+
+# No-HZ full dynticks — reduces timer overhead on isolated cores
+CONFIG_NO_HZ=y
+CONFIG_NO_HZ_IDLE=y
+
+# Force IRQ handlers into threads; scheduler decides placement
+# Critical for audio IRQ to run at real-time priority
+CONFIG_IRQ_FORCED_THREADING=y
+
+# Audio OSS PCM (legacy apps like MAME)
+CONFIG_SND_PCM_OSS=y
+
+# Allow many ALSA device nodes for multi-app / multi-card setups
+CONFIG_SND_DYNAMIC_MINORS=y

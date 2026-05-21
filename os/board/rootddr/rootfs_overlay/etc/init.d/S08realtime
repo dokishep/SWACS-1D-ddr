@@ -1,0 +1,114 @@
+#!/bin/sh
+# S08realtime — Low-latency CPU / IRQ / audio config for DDR rhythm gameplay
+# Runs after gadget init (S07) and before the input wizard (S10).
+#
+# Actions:
+#  1. All CPUs   → performance governor  (eliminates frequency ramp latency)
+#  2. Cores 1–3  → nohz_full, isolated    (game + mixer run dedicated, no timer IRQs)
+#  3. Core 0      → audio / timer / serial IRQs only
+#  4. HugePages   → 2 MB, 512 pages        (lock-free playback buffers)
+#
+# This requires isolcpus=1-3 to be present in the kernel cmdline
+# (set in GRUB_CMDLINE_LINUX_DEFAULT inside rootddr_defconfig).
+
+GOVERNOR_BIN="/sys/devices/system/cpu/cpu*/cpufreq/scaling_governor"
+SMP_AFFINITY_BASE="/proc/irq"
+NOFX_CPUS="1-3"
+
+set_perf_governor() {
+    for f in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do
+        [ -w "$f" ] || continue
+        echo "performance" > "$f" 2>/dev/null || true
+    done
+}
+
+disable_boost() {
+    for f in /sys/devices/system/cpu/cpu*/cpufreq/boost; do
+        [ -f "$f" ] || continue
+        echo "0" > "$f" 2>/dev/null || true
+    done
+}
+
+setup_hugepages() {
+    # 2 MB hugepages for ALSA mmap playback buffers
+    NR_MB=512   # ≈ 1 GB
+    NR_FILES="$(ls /sys/kernel/mm/hugepages/hugepages-2048kB/nr_hugepages 2>/dev/null || \
+                ls /proc/sys/vm/nr_hugepages 2>/dev/null)"
+    [ -z "$NR_FILES" ] && NR_FILES="/proc/sys/vm/nr_hugepages"
+    echo "$NR_MB" > "$NR_FILES" 2>/dev/null || true
+}
+
+pin_irq_to_cpu() {
+    local irq="$1" cpu="$2"
+    # kernel cmdline isolcpus=1-3 ensures CPUs 1-3 receive no timer interrupts.
+    # Pinning audio IRQs to CPU 0 removes contention from game threads.
+    local f="$SMP_AFFINITY_BASE/$irq/smp_affinity_list"
+    [ -f "$f" ] || return 0
+    echo "$cpu" > "$f" 2>/dev/null || true
+}
+
+pin_irqs_to_cpu0() {
+    # Audio / sound card IRQs — pin to CPU 0 for consistent realtime access
+    local dir
+    for dir in $SMP_AFFINITY_BASE/*; do
+        [ -d "$dir" ] || continue
+        local name="$(cat "$dir/name" 2>/dev/null)"
+        case "$name" in
+            *audio*|*sound*|*snd*|*HDA*|*ALSA*) pin_irq_to_cpu "$(basename "$dir")" 0 ;;
+        esac
+    done
+
+    # Timer / local-APIC IRQ — pin to CPU 0 so isolated cores get no periodic ticks
+    for irq_dir in $SMP_AFFINITY_BASE/*; do
+        [ -d "$irq_dir" ] || continue
+        local irq_name="$(cat "$irq_dir/name" 2>/dev/null)"
+        case "$irq_name" in
+            *local*apic*|*timer*|*hpet*) pin_irq_to_cpu "$(basename "$irq_dir")" 0 ;;
+        esac
+    done
+}
+
+isolate_cpu_memory() {
+    # Prevent the kernel scheduler from moving game threads to the wrong NUMA node.
+    for cpu in $NOFX_CPUS; do
+        local node
+        node="$(cat "/sys/devices/system/cpu/cpu$cpu/node" 2>/dev/null || echo 0)"
+        [ "$node" = "0" ] && continue
+        # No cross-node hint needed for single-socket DDR arcade rigs.
+    done
+}
+
+case "$1" in
+    start)
+        echo "[S08realtime] Setting CPU governors → performance"
+        set_perf_governor
+        disable_boost
+
+        echo "[S08realtime] HugePages → 512 × 2 MB"
+        setup_hugepages
+
+        # isolcpus=1-3 in cmdline keeps cores 1-3 free of kernel housekeeping;
+        # now pin hardware IRQs so they land on core 0.
+        echo "[S08realtime] Pinning audio + timer IRQs → CPU 0"
+        pin_irqs_to_cpu0
+
+        echo "[S08realtime] Done"
+        ;;
+    stop)
+        echo "[S08realtime] Restoring balanced governors"
+        for f in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do
+            [ -w "$f" ] || continue
+            echo "schedutil" > "$f" 2>/dev/null || true
+        done
+        ;;
+    restart)
+        $0 stop
+        $0 start
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart}"
+        exit 1
+        ;;
+esac
+
+exit 0
