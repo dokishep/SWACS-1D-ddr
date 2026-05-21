@@ -1,0 +1,21 @@
+# udev rules for DDR USB memory card system
+# Triggers usb-port-mapper.sh when a USB mass-storage device is added or removed,
+# allowing the port-mapper to re-evaluate P1/P2 assignments and update
+# /var/data/usb-port-mapper.state so S07gadget can react accordingly.
+
+# Override UDC sysfs path permissions (non-gadget mode only)
+SUBSYSTEM=="usb", ATTR{idVendor}=="1d6b", ATTR{idProduct}=="0104", \
+    ENV{ID_SERIAL_SHORT}="0"
+
+# ── Hot-plug: Mass Storage add / remove ────────────────────────────────────
+ACTION=="add",  SUBSYSTEM=="usb", ATTR{bInterfaceClass}=="08", \
+    TAG+="ddr_usb_storage", \
+    RUN+="/etc/init.d/S06usbports rescan"
+
+ACTION=="remove", SUBSYSTEM=="usb", ATTR{bInterfaceClass}=="08", \
+    TAG+="ddr_usb_storage", \
+    RUN+="/etc/init.d/S06usbports rescan"
+
+# ── Hot-plug: SCSI add (covers USB MSC which appears as SCSI) ───────────────
+ACTION=="add", SUBSYSTEM=="scsi", KERNEL=="sg[0-9]*", ATTR{type}=="0", \
+    RUN+="/etc/init.d/S06usbports rescan"

@@ -1,0 +1,67 @@
+#!/bin/sh
+# S06usbports — USB Port Mapping daemon
+# Runs early in boot (priority 06, before S07gadget) to establish the P1/P2
+# port-to-physical-USB-bus assignments and start the hot-plug monitoring loop.
+#
+# Provides:
+#   /var/data/usb-port-mapper.state   per-bus → player mappings
+#   /var/data/usb-port-mapper.state.buslist  last-seen bus list (for change detection)
+#   Background hot-plug poller writing the above state file
+
+MAP_STATE="/var/data/usb-port-mapper.state"
+MAPPER_BIN="/usr/local/bin/usb-port-mapper.sh"
+PID_FILE="/var/run/usb-port-mapper-hotplug.pid"
+
+case "$1" in
+    start)
+        if [ ! -x "$MAPPER_BIN" ]; then
+            echo "Warning: $MAPPER_BIN not found"
+            exit 1
+        fi
+
+        # Ensure the data directory exists
+        touch "$MAP_STATE"
+        chmod 600 "$MAP_STATE"
+        rm -f "$MAP_STATE.buslist"
+
+        # Perform an initial full scan so that S07gadget can read the state file.
+        echo "Scanning USB buses for port mapping..."
+        $MAPPER_BIN rescan
+
+        # Start hot-plug background monitor
+        if [ -r /sys/bus/usb/devices ]; then
+            echo "Starting USB port hot-plug monitor..."
+            $MAPPER_BIN hotplug &
+        else
+            echo "No USB subsystem present, skipping hot-plug monitor"
+        fi
+        ;;
+
+    stop)
+        if [ -f "$PID_FILE" ]; then
+            pid=$(cat "$PID_FILE")
+            if kill -0 "$pid" 2>/dev/null; then
+                echo "Stopping USB port hot-plug monitor (pid=$pid)..."
+                # Signal daemon to exit by removing PID file
+                rm -f "$PID_FILE"
+            fi
+        fi
+        rm -f "$MAP_STATE.buslist"
+        ;;
+
+    restart)
+        $0 stop
+        $0 start
+        ;;
+
+    status)
+        $MAPPER_BIN status
+        ;;
+
+    *)
+        echo "Usage: $0 {start|stop|restart|status}"
+        exit 1
+        ;;
+esac
+
+exit 0

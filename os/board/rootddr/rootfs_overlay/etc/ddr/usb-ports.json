@@ -1,0 +1,23 @@
+{
+  "version": "1.0",
+  "description": "USB port to DDR player mapping for RootDDR",
+  "ports": {
+    "p1": {
+      "usb2_bus": "1.1,1.2",
+      "usb3_bus": "2.1,2.2",
+      "description": "Player 1 USB port assignment (USB 2 and USB 3)"
+    },
+    "p2": {
+      "usb2_bus": "1.3,1.4",
+      "usb3_bus": "2.3,2.4",
+      "description": "Player 2 USB port assignment (USB 2 and USB 3)"
+    }
+  },
+  "fallback_order": ["usb3", "usb2"],
+  "notes": [
+    "To detect the correct bus numbers run: lsusb -t (Linux host) or check /sys/bus/usb/devices/",
+    "Each entry under usb2_bus or usb3_bus is a comma-separated list of bus IDs that map to that player",
+    "The mapper will try usb3 first then usb2 for each player unless a specific mask is forced",
+    "Edit this file with actual bus IDs matching your cabinet's physical wiring"
+  ]
+}
