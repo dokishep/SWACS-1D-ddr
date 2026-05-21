@@ -1,15 +1,25 @@
+#
+# swacs1d_defconfig — RootDDR v2.0 for Swacs1D board
+# Buildroot 2025.02 — strict version pin
+# VESA/fbdev X11, ALSA audio, exFAT, MAME, BusyBox init
+# No DRM / GBM / KMS / Wayland / PulseAudio / Mesa / libva
+#
+
 BR2_x86_64=y
 BR2_TOOLCHAIN_BUILDROOT_MUSL=y
 BR2_TOOLCHAIN_BUILDROOT_CXX=y
 BR2_PACKAGE_HOST_RUSTC=y
 
-# System
+# ── Buildroot version pin (2025.02 — must not drift) ───────────────────────────
+BR2_VERSION_STRICT=y
+
+# ── System ─────────────────────────────────────────────────────────────────────
 BR2_TARGET_GENERIC_GETTY_PORT="tty1"
 BR2_SYSTEM_DHCP="eth0"
 BR2_ROOTFS_DEVICE_CREATION_DYNAMIC_EUDEV=y
 BR2_INIT_BUSYBOX=y
 
-# Linux Kernel
+# ── Linux Kernel ───────────────────────────────────────────────────────────────
 BR2_LINUX_KERNEL=y
 BR2_LINUX_KERNEL_CUSTOM_VERSION=y
 BR2_LINUX_KERNEL_CUSTOM_VERSION_VALUE="6.6.30"
@@ -18,7 +28,7 @@ BR2_LINUX_KERNEL_NEEDS_HOST_OPENSSL=y
 BR2_LINUX_KERNEL_NEEDS_HOST_LIBELF=y
 BR2_LINUX_KERNEL_CONFIG_FRAGMENT_FILES="board/swacs1d/kernel.fragment"
 
-# X11 & Graphics — VESA + fbdev only, no DRM/GBM/Mesa/KMS stack
+# ── X11 & Graphics — VESA + fbdev only, no DRM/GBM/Mesa/KMS stack ──────────────
 BR2_PACKAGE_XORG7=y
 BR2_PACKAGE_XSERVER_XORG_SERVER=y
 BR2_PACKAGE_XSERVER_XORG_SERVER_MODULAR=y
@@ -33,46 +43,43 @@ BR2_PACKAGE_XAPP_XCLOCK=n
 BR2_PACKAGE_XDRIVER_XF86_VIDEO_FBDEV=y
 BR2_PACKAGE_XDRIVER_XF86_VIDEO_VESA=y
 
-# SDL3 — X11 only, no KMS/DRM
-BR2_PACKAGE_SDL3=y
-BR2_PACKAGE_SDL3_X11=y
-BR2_PACKAGE_SDL3_IMAGE=y
-BR2_PACKAGE_SDL3_TTF=y
-BR2_PACKAGE_SDL3_MIXER=y
-
-# Multimedia — ALSA audio only (no pulseaudio)
+# ── Audio — ALSA only (no PulseAudio, no MAME built-in) ───────────────────────
 BR2_PACKAGE_ALSA_LIB=y
 BR2_PACKAGE_ALSA_UTILS=y
-BR2_PACKAGE_JQ=y
 
-# Disk / partition tools
+# ── Utilities ─────────────────────────────────────────────────────────────────
+BR2_PACKAGE_JQ=y
+BR2_PACKAGE_ZSTD=y
+BR2_PACKAGE_OPENSSL=y
+
+# ── Disk / partition tools (GPT probing, partition-label detection) ────────────
 BR2_PACKAGE_GPTFDISK=y
 BR2_PACKAGE_GPTFDISK_SGDISK=y
 BR2_PACKAGE_UTIL_LINUX=y
 BR2_PACKAGE_UTIL_LINUX_BLKID=y
 BR2_PACKAGE_UTIL_LINUX_LSBLK=y
 
-# exFAT support (kernel driver + FUSE fallback for initramfs)
+# ── exFAT support (kernel driver + FUSE fallback for initramfs) ────────────────
 BR2_PACKAGE_EXFAT_PROGS=y
 BR2_PACKAGE_EXFAT_FUSE=y
 
-# MAME — arcade emulator (Buildroot 2025.02 ships BR2_PACKAGE_MAME)
-# When selecting MAME in menuconfig, ALSA_UTILS is auto-selected anyway;
-# the line is left here explicitly for clarity.
+# ── MAME — arcade emulator (Buildroot 2025.02 ships BR2_PACKAGE_MAME) ─────────
 BR2_PACKAGE_ALSA_UTILS=y
 BR2_PACKAGE_MAME=y
 
-# Compression / crypto
-BR2_PACKAGE_OPENSSL=y
-BR2_PACKAGE_ZSTD=y
+# ── Init scripts ──────────────────────────────────────────────────────────────
 BR2_PACKAGE_INITSCRIPTS=y
 
-# Bootloader
+# ── Compression / crypto ──────────────────────────────────────────────────────
+BR2_PACKAGE_SQUASHFS=y
+BR2_PACKAGE_ZSTD=y
+
+# ── Bootloader ────────────────────────────────────────────────────────────────
 BR2_TARGET_GRUB2=y
 BR2_TARGET_GRUB2_X86_64_EFI=y
 BR2_TARGET_GRUB2_BUILTIN_MODULES_EFI="boot linux ext2 fat squash4 part_gpt normal efi_gop"
 
-# Image generation
+# ── Image generation ──────────────────────────────────────────────────────────
 BR2_TARGET_ROOTFS_SQUASHFS=y
 BR2_PACKAGE_HOST_GENIMAGE=y
 BR2_PACKAGE_HOST_DOSFSTOOLS=y
@@ -82,5 +89,5 @@ BR2_ROOTFS_POST_IMAGE_SCRIPT="board/swacs1d/post-image.sh support/scripts/genima
 BR2_ROOTFS_POST_SCRIPT_ARGS="-c board/swacs1d/genimage.cfg"
 BR2_ROOTFS_OVERLAY="board/swacs1d/rootfs_overlay"
 
-# Build speed
+# ── Build speed ───────────────────────────────────────────────────────────────
 BR2_CCACHE=y
