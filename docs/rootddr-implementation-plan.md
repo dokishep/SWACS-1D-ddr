@@ -67,7 +67,7 @@ GitHub Actions on push to main:
 
 | Requirement | Notes |
 |-------------|-------|
-| **Buildroot 3.23.4 LTS** | Different clone URL: `2026.02.x` or `3.23.4` branch |
+| **Buildroot 2025.02.x LTS** | Uses `2025.02.x` branch |
 | **MAME for Konami System 573 DDR** | Add MAME to defconfig; config for -573 mixes, event mode, save-state loading |
 | **ddr-picker / pegasus-fe** | ddr-picker is Windows/AutoHotkey; port the concept to Linux using pegasus-fe (C++/Qt, SDL2 backend) + custom grid-micro theme + game descriptor files |
 | **Input mapping wizard (first boot)** | New `S10inputwiz` script; SDL2 GameController configurator; persist to `/var/data/input.conf` |
@@ -82,12 +82,12 @@ GitHub Actions on push to main:
 
 All beads belong under `os/board/rootddr/` and `os/configs/rootddr_defconfig`.
 
-### Bead 1 — Baseboard: Upgrade to Buildroot 3.23.4 LTS
+### Bead 1 — Baseboard: Buildroot 2025.02.x LTS
 **Files changed:** `os/configs/rootddr_defconfig`, `os/board/rootddr/genimage.cfg`, `os/board/rootddr/grub.cfg`, `os/board/rootddr/kernel.fragment`, `os/board/rootddr/post-image.sh`
 **Tasks:**
 - Create `os/board/rootddr/` (copy `swacs1d` as starting point, rename everywhere)
-- Update defconfig Buildroot clone URL in CI from `2025.02.x` to `3.23.4`
-- Review defconfig options: bring forward all SWACS-1D settings, drop what is DDR-specific, add what is new in 3.23.4
+- Buildroot clone URL remains `2025.02.x` (no change needed)
+- Review defconfig options: bring forward all SWACS-1D settings, drop what is DDR-specific
 - Augment `kernel.fragment` with DDR-specific additions: CONFIG_USB_GADGET, CONFIG_USB_CONFIGFS, CONFIG_USB_G_MASS_STORAGE, CONFIG_USB_F_MASS_STORAGE, CONFIG_HIDRAW, CONFIG_UINPUT, CONFIG_INPUT_EVDEV, CONFIG_SND_HDA_INTEL, CONFIG_SND_ALSA_SIM, CONFIG_SND_USB_AUDIO, CONFIG_SND_OSSEMUL (if needed), CONFIG_TIMERFD, CONFIG_EPOLL, CONFIG_NO_HZ_FULL
 - Update genimage.cfg: add `opt` partition (opt RW ext4 for /opt/game style emulation in DDR context)
 - Keep GRUB config close to SWACS-1D but add `reboot=b` kernel param for fast-reboot support
@@ -96,7 +96,7 @@ All beads belong under `os/board/rootddr/` and `os/configs/rootddr_defconfig`.
 ### Bead 2 — MAME: Konami System 573 DDR Package
 **Files changed:** `os/configs/rootddr_defconfig`, `os/board/rootddr/rootfs_overlay/`
 **Tasks:**
-- Add `BR2_PACKAGE_MAME=y` to defconfig (Buildroot 3.23.4 has MAME package)
+- Add `BR2_PACKAGE_MAME=y` to defconfig (Buildroot 2025.02.x has MAME package)
 - Add MAME ConfigFragment (`os/board/rootddr/mame.fragment`) enabling `--target gnu-linux`, with `CONFIG_SYSTEM573=y`, `CONFIG_KCHMPS=y`, `CONFIG_DDR=y`, audio drivers for ALSA+PortAudio
 - Add audio latency patch layer to MAME build (patch rate-limit async sound, reduce audio buffer)
 - Add `mame-system573-save-states/` directory to rootfs_overlay (pre-built `o` state per game matching ddr-picker convention)
@@ -185,17 +185,15 @@ All beads belong under `os/board/rootddr/` and `os/configs/rootddr_defconfig`.
 
 ---
 
-## 4. Buildroot 3.23.4 LTS Migration Notes
+## 4. Buildroot 2025.02.x LTS Notes
 
 ### Differences from 2025.02.x
-| Area | 2025.02.x | 3.23.4 LTS | Migration note |
-|------|-----------|------------|----------------|
-| Clone URL | `git.buildroot.net/buildroot` (2025.02.x branch) | `git.buildroot.net/buildroot` (2025.02.x branch → **use 2025.02.x is correct** — Buildroot 3.23.4 does not exist as branch name; correct LTS for 2026 is **2026.02.x** or **2025.02.x continues** ) | **Use 2025.02.x as it is latest stable as of 2026; if 3.23.4 LTS is required, use buildroot `2025.02.x` which IS the 3.23.x series** |
-| SDL3 | Available in 2025.02.x | Same | No change |
-| MAME | Available | Same | No change |
-| Musl toolchain | Manual download | Available as BR2_TOOLCHAIN_BUILDROOT_MUSL | Can drop external musl-cross download step |
-
-**Correction on Buildroot naming:** Buildroot 3.23.4 is the internal version number of the 2025.02.x release series. The `2025.02.x` branch already is the 3.23.x LTS line. No branch change is needed for the CI — only the defconfig and board-set rename.
+| Area | 2025.02.x | Notes |
+|------|-----------|-------|
+| Clone URL | `git.buildroot.net/buildroot` (2025.02.x branch) | Use 2025.02.x branch |
+| SDL3 | Available in 2025.02.x | Same |
+| MAME | Available | Same |
+| Musl toolchain | Manual download | Available as BR2_TOOLCHAIN_BUILDROOT_MUSL |
 
 ### CI Workflow Changes
 ```yaml
