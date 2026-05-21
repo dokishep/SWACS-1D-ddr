@@ -1,8 +1,28 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# kernel.fragment — kernel config overrides
+# Swacs 1D (RootDDR v2.0)
+#
+# Fermi-era and later: VESA + fbdev framebuffer only.
+# No DRM / GBM / KMS / GPU-mediums / vendor drivers (intel / amdgpu / nouveau).
+# No TPM / SecureBoot / SE rock-pollution in the kernel image.
+#
+# What this fragment enables / disables:
+#   CONFIG_SQUASHFS=y          → rootfs overlay squashfs image
+#   CONFIG_FB_EFI=y            → EFI framebuffer (VESA fallback)
+#   CONFIG_FRAMEBUFFER_CONSOLE=y→ Linux console on the VESA framebuffer
+#   (all DRM_x / TCG_x configs unset)
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Read-only root — squashfs module so kernel can mount the ROOT_SYSTEM image directly
 CONFIG_SQUASHFS=y
+
+# EFI framebuffer — required for VESA video without a DRM driver
 CONFIG_FB_EFI=y
-CONFIG_DRM_VIRTIO_GPU=y
-CONFIG_DRM_QXL=y
-CONFIG_DRM_BOCHS=y
-CONFIG_TCG_TPM=y
-CONFIG_TCG_TIS=y
-CONFIG_TCG_CRB=y
+
+# Framebuffer console — plain-text boot messages on VESA screen (no kms/test)
+CONFIG_VGA_CONSOLE=y
+CONFIG_VGACON_SOFT_SCROLLBACK=y
+CONFIG_FRAMEBUFFER_CONSOLE=y
+
+# Input on VESA land — evdev passthrough for gamepad / keyboard
+CONFIG_INPUT_EVDEV=y

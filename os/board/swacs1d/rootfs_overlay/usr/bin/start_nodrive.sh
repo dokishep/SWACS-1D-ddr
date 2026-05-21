@@ -1,5 +1,8 @@
 #!/bin/sh
 
+# start_nodrive.sh — X11 error screen when required partitions are absent
+# Contains no anti-tamper or TPM-related code.
+
 # 1. Configure screen to 640x480 at highest reported refresh rate
 OUTPUT=$(xrandr | grep " connected" | cut -d' ' -f1 | head -n 1)
 if [ -n "$OUTPUT" ]; then
@@ -12,20 +15,16 @@ if [ -n "$OUTPUT" ]; then
 fi
 
 # 2. Display the warning message graphically via xmessage
-xmessage -center -buttons "Shut Down" -default "Shut Down" -title "SWACS-1D OS - TPM ERROR" "
+xmessage -center -buttons "Shut Down" -default "Shut Down" -title "SWACS-1D OS — NO DRIVE" "
 ==================================================
-                    ERROR!
+                    WARNING
 ==================================================
 
-This board doesn't support TPM, which is essential
-to guarantee game data integrity!
+Required drive partition not found.
 
-Without TPM, the board isn't eligible to be
-factory provisioned, and any attempts of doing so
-will be blocked to prevent data tampering.
+Ensure the ROMS / SAVE partitions are present and
+mounted on the boot drive.
 
-Check the board UEFI settings for Security/TPM
-settings and enable TPM 2.0, if this setting is
-disabled later, the board will not boot!
+Press Shut Down to power off the board.
 
 =================================================="
