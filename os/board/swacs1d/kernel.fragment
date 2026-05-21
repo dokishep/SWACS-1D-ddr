@@ -29,3 +29,6 @@ CONFIG_FRAMEBUFFER_CONSOLE=y
 
 # Input on VESA land — evdev passthrough for gamepad / keyboard
 CONFIG_INPUT_EVDEV=y
+
+# exFAT filesystem support (for SAVE partition mounting)
+CONFIG_EXFAT_FS=y
