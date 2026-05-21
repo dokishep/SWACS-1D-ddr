@@ -1,0 +1,23 @@
+#!/bin/sh
+# Input mapping wizard - runs on first boot to configure gamepad buttons
+
+INPUT_MAP_CONF="/etc/ddr/input-map.json"
+VAR_DATA_CONF="/var/data/input.conf"
+
+# Check if input mapping already exists
+if [ -f "$INPUT_MAP_CONF" ] || [ -f "$VAR_DATA_CONF" ]; then
+    exit 0
+fi
+
+# Start the input mapping wizard
+echo "Starting input mapping wizard..."
+/usr/bin/input-wizard
+
+# Ensure the mapping was saved to the expected location
+if [ -f "$INPUT_MAP_CONF" ]; then
+    mkdir -p "$(dirname "$VAR_DATA_CONF")"
+    cp "$INPUT_MAP_CONF" "$VAR_DATA_CONF"
+    echo "Input mapping saved to $VAR_DATA_CONF"
+fi
+
+exit 0

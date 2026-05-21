@@ -79,5 +79,8 @@ BR2_ROOTFS_POST_IMAGE_SCRIPT="board/swacs1d/post-image.sh support/scripts/genima
 BR2_ROOTFS_POST_SCRIPT_ARGS="-c board/swacs1d/genimage.cfg"
 BR2_ROOTFS_OVERLAY="board/swacs1d/rootfs_overlay"
 
+# Input Wizard
+BR2_PACKAGE_INPUT_WIZARD=y
+
 # Build Speed
 BR2_CCACHE=y

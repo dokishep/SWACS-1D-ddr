@@ -1,0 +1,7 @@
+[package]
+name = "input-wizard"
+version = "1.0"
+edition = "2021"
+
+[dependencies]
+sdl3 = "0.50.0"

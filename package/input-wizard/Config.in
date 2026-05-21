@@ -1,0 +1,6 @@
+config BR2_PACKAGE_INPUT_WIZARD
+	bool "input-wizard"
+	depends on BR2_PACKAGE_SDL3
+	help
+	  Input mapping wizard for first boot configuration.
+	  Prompts user to map gamepad buttons and saves configuration.
