@@ -12,20 +12,17 @@ if [ -n "$OUTPUT" ]; then
 fi
 
 # 2. Display the warning message graphically via xmessage
-xmessage -center -buttons "Shut Down" -default "Shut Down" -title "SWACS-1D OS - TPM ERROR" "
+xmessage -center -buttons "" -title "RootDDR OS - DRIVE NOT FOUND" "
 ==================================================
-                    ERROR!
+                     WARNING!
 ==================================================
 
-This board doesn't support TPM, which is essential
-to guarantee game data integrity!
+No ROMS/SAVE partitions detected.
 
-Without TPM, the board isn't eligible to be
-factory provisioned, and any attempts of doing so
-will be blocked to prevent data tampering.
+Please ensure the exFAT-formatted USB drive
+with DDR ROM CHD files is properly connected.
 
-Check the board UEFI settings for Security/TPM
-settings and enable TPM 2.0, if this setting is
-disabled later, the board will not boot!
+The system will continue to attempt mounting
+on the next boot cycle.
 
-=================================================="
+================================================="

@@ -19,22 +19,23 @@ DDR_DIR="/etc/ddr"
 SAVE_DDR_DIR="/mnt/save/ddr"
 SYS_MAP="/usr/lib/ddr/input-map.json"
 
+# Check if wizard has already been run
+if [ -f "$SYS_MAP" ]; then
+    echo "Input map already exists, skipping wizard"
+    exit 0
+fi
+
 # ── helpers ─────────────────────────────────────────────────────────────────
 
 log() { printf '%s\n' "$1" >"$CONSOLE"; }
 prompt() { printf '%s' "$1" >"$CONSOLE"; }
 
 read_key() {
-    # Read one byte (or armed key code sequence) from the console.
-    # Returns the raw byte.  Caller maps to human-readable label.
     IFS= read -r -n1 -s _raw 2>/dev/null
-    # Re-enable echo for the shell session
     setterm -echo on >"$CONSOLE" 2>/dev/null
     printf '%s' "$_raw"
 }
 
-# Wait up to $1 seconds for ANY input event on /dev/input/js* or tty.
-# Returns 0 if something was pressed, 1 on timeout.
 wait_for_event() {
     _timeout="${1:-15}"
     _begin=$(date +%s)
@@ -74,17 +75,6 @@ log ""
 log "Press ENTER when you are ready to begin..."
 read -r < "$CONSOLE"
 
-# ── Pass 1: read the template ────────────────────────────────────────────────
-# We work from the overlay default at /etc/input-map.json so that any
-# machine-level customisations are already seen before we prompt.
-COUNT=0
-
-# ── Pass 2: remap every entry ────────────────────────────────────────────────
-# For every entry in the JSON we prompt the operator.
-# Each entry has: step_left, step_down, step_up, step_right,
-#                 service, test, coin,
-#                 menu_up, menu_down, menu_select, menu_back
-
 if [ ! -f "$INPUT_MAP" ]; then
     log ""
     log "ERROR: $INPUT_MAP not found.  Cannot run wizard."
@@ -93,8 +83,9 @@ if [ ! -f "$INPUT_MAP" ]; then
     exit 1
 fi
 
-# Save originals for display
 ENTRIES=$(jq -c 'to_entries[]' "$INPUT_MAP")
+UPDATED_ENTRIES=""
+COUNT=0
 
 for ENTRY in $ENTRIES; do
     COUNT=$((COUNT + 1))
@@ -104,16 +95,15 @@ for ENTRY in $ENTRIES; do
     CUR_KEY=$(printf '%s' "$ENTRY" | jq -r '.value.key // empty')
     CUR_BTN=$(printf '%s' "$ENTRY" | jq -r '.value.button // empty')
 
-    # Determine the prompting style
     case "$NAME" in
         step_left)   LABEL="Dance pad LEFT  (←)" ;;
         step_down)   LABEL="Dance pad DOWN  (↓)" ;;
         step_up)     LABEL="Dance pad UP    (↑)" ;;
         step_right)  LABEL="Dance pad RIGHT (→)" ;;
-        service)     LABEL="Service button (op- tion- al)" ;;
-        test)        LABEL="Test button    (op- tion- al)" ;;
+        service)     LABEL="Service button (optional)" ;;
+        test)        LABEL="Test button    (optional)" ;;
         coin)        LABEL="Coin button" ;;
-        menu_up)     LABEL="Menu UP    (navigate up   in ddr-picker)" ;;
+        menu_up)     LABEL="Menu UP    (navigate up in ddr-picker)" ;;
         menu_down)   LABEL="Menu DOWN  (navigate down in ddr-picker)" ;;
         menu_select) LABEL="Menu SELECT (confirm game in ddr-picker)" ;;
         menu_back)   LABEL="Menu BACK  (cancel / return to picker)" ;;
@@ -123,10 +113,9 @@ for ENTRY in $ENTRIES; do
     MENU_BUTTON=
     MENU_KEY=
 
-    # Stage 1: joypad / gamepad  (only ask if the entry has a button slot)
     if [ "$TYPE" = "joypad" ] || [ -n "$CUR_BTN" ]; then
         log ""
-        log "─── $COUNT / 11  $LABEL ─────────────────────────────────"
+        log "─── $LABEL ─────────────────────────────────"
         log ""
         log "  Stage 1 — Gamepad / cabinet button"
         log ""
@@ -149,7 +138,6 @@ for ENTRY in $ENTRIES; do
             MENU_BUTTON="$CUR_BTN"
         fi
 
-        # Stage 2: keyboard fallback / alternative
         log ""
         log "  Stage 2 — Keyboard key (optional alternative)"
         log "  Press a keyboard key now, or press ENTER to skip…"
@@ -161,10 +149,10 @@ for ENTRY in $ENTRIES; do
             "$(printf '\n')") log "  [keyboard] skipped." ;;
             *)
                 case "$KBYTE" in
-                    "$(printf '\\033')")  MENU_KEY="Escape" ;;
-                    "$(printf '\\r')")    MENU_KEY="Return" ;;
-                    "$(printf '\\n')")    MENU_KEY="Enter"  ;;
-                    "$(printf '\\x7f')")  MENU_KEY="Backspace" ;;
+                    "$(printf '\033')")  MENU_KEY="Escape" ;;
+                    "$(printf '\r')")    MENU_KEY="Return" ;;
+                    "$(printf '\n')")    MENU_KEY="Enter"  ;;
+                    "$(printf '\x7f')")  MENU_KEY="Backspace" ;;
                     *)                   MENU_KEY="$(printf '%d' "'$KBYTE")" ;;
                 esac
                 log "  ✓  Detected key: $MENU_KEY"
@@ -172,10 +160,8 @@ for ENTRY in $ENTRIES; do
         esac
 
     else
-        # Pure keyboard entry (menu entries currently type=joypad but
-        # keyboard alternative is always useful)
         log ""
-        log "─── $COUNT / 11  $LABEL ─────────────────────────────────"
+        log "─── $LABEL ─────────────────────────────────"
         log ""
         log "  Press the desired keyboard key now, or press ENTER to skip…"
         setterm -echo off >"$CONSOLE" 2>/dev/null
@@ -183,10 +169,10 @@ for ENTRY in $ENTRIES; do
         setterm -echo on >"$CONSOLE" 2>/dev/null
         case "$KBYTE" in
             "$(printf '\n')") MENU_KEY="" ;;
-            "$(printf '\\033')")  MENU_KEY="Escape" ;;
-            "$(printf '\\r')")    MENU_KEY="Return" ;;
-            "$(printf '\\n')")    MENU_KEY="Enter"  ;;
-            "$(printf '\\x7f')")  MENU_KEY="Backspace" ;;
+            "$(printf '\033')")  MENU_KEY="Escape" ;;
+            "$(printf '\r')")    MENU_KEY="Return" ;;
+            "$(printf '\n')")    MENU_KEY="Enter"  ;;
+            "$(printf '\x7f')")  MENU_KEY="Backspace" ;;
             *)                   MENU_KEY="$(printf '%d' "'$KBYTE")" ;;
         esac
         if [ -n "$MENU_KEY" ]; then
@@ -194,7 +180,6 @@ for ENTRY in $ENTRIES; do
         fi
     fi
 
-    # Update the JSON entry with the newly collected values
     if [ -n "$MENU_BUTTON" ]; then
         ENTRY=$(printf '%s' "$ENTRY" | jq --argjson btn "$MENU_BUTTON" '.value.button = $btn')
     fi
@@ -202,22 +187,14 @@ for ENTRY in $ENTRIES; do
         ENTRY=$(printf '%s' "$ENTRY" | jq --arg key "$MENU_KEY" '.value.key = $key')
     fi
 
-    # Accumulate updated entries
     UPDATED_ENTRIES="${UPDATED_ENTRIES}$(printf '%s\n' "$ENTRY" | jq -c '.')"$'\n'
-
 done
 
-# ── Finalise ─────────────────────────────────────────────────────────────────
-# Save to the system location immediately (SAVE partition may not be
-# mounted yet — S11save_mount.sh runs slightly later in the boot order).
-# The ROMS / SAVE mounts script will flush a copy to the SAVE partition
-# once /mnt/save is available.
+NEWMAP=$(printf '%s' "$UPDATED_ENTRIES" | jq -s 'add | from_entries')
 mkdir -p "$DDR_DIR" "$(dirname "$SYS_MAP")" "$SAVE_DDR_DIR"
-
-printf '%s' "$NEW_MAP" > "$SYS_MAP"
+printf '%s' "$NEWMAP" > "$SYS_MAP"
 cp "$SYS_MAP" "$INPUT_MAP"
 
-# Persisted system copy — always available
 ln -sfn "$SYS_MAP"  "$DDR_DIR/input-map.json"  2>/dev/null
 
 log ""

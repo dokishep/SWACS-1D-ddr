@@ -17,7 +17,6 @@ CONF_DIR="/var/run/joymap"
 PIDFILE="$CONF_DIR/joymapd.pid"
 
 start() {
-    # Pre-conditions
     [ -f "$SYS_MAP" ] || [ -f "$ETC_MAP" ] || return 0
     command -v jq         >/dev/null 2>&1 || return 0
     command -v python3    >/dev/null 2>&1 || return 0
@@ -25,14 +24,19 @@ start() {
 
     mkdir -p "$CONF_DIR"
 
-    # Ensure a canonical copy always exists at /usr/lib/ddr for the daemon
-    [ -f "$SYS_MAP" ] || cp "$ETC_MAP" "$SYS_MAP"
+    if [ -f "$SYS_MAP" ]; then
+        MAP_FILE="$SYS_MAP"
+    elif [ -f "$ETC_MAP" ]; then
+        MAP_FILE="$ETC_MAP"
+        cp "$ETC_MAP" "$SYS_MAP"
+    else
+        return 0
+    fi
 
-    # Don't start if already running
     [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null && return 0
 
     echo "joymap: starting joystick→keyboard mapper daemon…"
-    python3 /usr/libexec/joymapd "$SYS_MAP" >/var/log/joymapd.log 2>&1 &
+    python3 /usr/libexec/joymapd "$MAP_FILE" >/var/log/joymapd.log 2>&1 &
     echo $! > "$PIDFILE"
 }
 
