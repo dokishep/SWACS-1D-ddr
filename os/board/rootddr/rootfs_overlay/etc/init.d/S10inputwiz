@@ -1,0 +1,36 @@
+#!/bin/sh
+
+# Input Mapping Wizard - runs on first boot if no input configuration exists
+
+CONFIG_FILE="/var/data/input.conf"
+
+# Only run if we haven't configured input yet
+if [ -f "$CONFIG_FILE" ]; then
+    echo "Input configuration already exists, skipping wizard"
+    exit 0
+fi
+
+# Check if X11 is available (we need it for SDL display)
+if [ -z "$DISPLAY" ]; then
+    # Use xinit so this script blocks until the wizard exits, then cleans up
+    if [ -x /usr/bin/Xorg ] && [ -x /usr/bin/xinit ]; then
+        xinit /usr/local/bin/input-wizard -- :0 vt7 -nocursor -quiet -s 0 -dpms
+    else
+        # Fallback: run wizard without X
+        echo "Warning: X11 not available, running wizard without display"
+        if [ -x /usr/local/bin/input-wizard ]; then
+            /usr/local/bin/input-wizard
+        else
+            echo "Warning: input-wizard binary not found"
+        fi
+    fi
+else
+    # DISPLAY is already set, run wizard directly
+    if [ -x /usr/local/bin/input-wizard ]; then
+        /usr/local/bin/input-wizard
+    else
+        echo "Warning: input-wizard binary not found"
+    fi
+fi
+
+exit 0

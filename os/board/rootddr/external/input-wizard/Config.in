@@ -1,0 +1,7 @@
+config BR2_PACKAGE_INPUT_WIZARD
+	bool "input-wizard"
+	depends on BR2_PACKAGE_SDL3
+	help
+		Input mapping wizard for first boot configuration.
+		SDL3-based wizard that prompts for button mapping
+		and persists mapping to /var/data/input.conf.
