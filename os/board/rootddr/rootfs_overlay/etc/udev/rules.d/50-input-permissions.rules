@@ -1,0 +1,4 @@
+# Set permissions for input devices
+SUBSYSTEM=="input", MODE="0666"
+# Set permissions for uinput device
+SUBSYSTEM=="misc", KERNEL=="uinput", MODE="0666"
