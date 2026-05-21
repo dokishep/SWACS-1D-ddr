@@ -1,0 +1,25 @@
+#!/bin/sh
+
+# Only start if the game drive is actually there and mounted
+if [ -d "/opt/game" ]; then
+    STATE_FILE="/var/data/state.json"
+    
+    # Check if we have a saved state to resume from
+    if [ -f "$STATE_FILE" ]; then
+        echo "Found resume state, attempting to restore..."
+        # Parse the state to determine what game to launch
+        # For now, we'll just note that we're resuming
+        logger -t S90gui "Resuming from saved state"
+    else
+        echo "No resume state found, starting fresh"
+    fi
+    
+    echo "Launching game bootstrap..."
+    
+    (
+        while true; do
+            /usr/bin/xinit /usr/bin/start_game.sh -- /usr/bin/Xorg :0 vt7 -nocursor -quiet -s 0 -dpms
+            sleep 1
+        done
+    ) &
+fi

@@ -1,0 +1,4 @@
+config BR2_PACKAGE_DDREAPER
+    bool "ddr-reaper"
+    help
+      DDR Reaper watchdog daemon for RootDDR.

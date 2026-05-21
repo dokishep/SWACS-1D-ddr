@@ -1,0 +1,76 @@
+#!/bin/sh
+# S08realtime - CPU governor and isolation for realtime performance
+# Sets CPU governor to performance and isolates CPUs for realtime tasks
+
+set_cpu_governor() {
+    echo "Setting CPU governor to performance"
+    for cpu in /sys/devices/system/cpu/cpu[0-9]*; do
+        if [ -d "$cpu/cpufreq" ]; then
+            echo performance > "$cpu/cpufreq/scaling_governor" 2>/dev/null || true
+        fi
+    done
+}
+
+setup_cpuset_isolation() {
+    # Check if cpuset is available
+    if [ ! -d /sys/fs/cgroup/cpuset ]; then
+        if grep -q cpuset /proc/filesystems; then
+            mount -t cgroup -o cpuset none /sys/fs/cgroup/cpuset
+        else
+            echo "Cpuset not available in kernel, skipping CPU isolation"
+            return
+        fi
+    fi
+
+    # Create system and realtime cpusets
+    mkdir -p /sys/fs/cgroup/cpuset/system
+    mkdir -p /sys/fs/cgroup/cpuset/realtime
+
+    # Get CPU count
+    CPU_COUNT=$(nproc --all 2>/dev/null || echo 1)
+    echo "Detected $CPU_COUNT CPU(s)"
+
+    if [ "$CPU_COUNT" -gt 1 ]; then
+        # Assign CPU0 to system (housekeeping)
+        echo 0 > /sys/fs/cgroup/cpuset/system/cpus
+        # Assign remaining CPUs to realtime
+        CPU_LIST=$(seq 1 $((CPU_COUNT-1)) | tr '\n' ',' | sed 's/,$//')
+        echo "$CPU_LIST" > /sys/fs/cgroup/cpuset/realtime/cpus
+        echo "System CPUs: 0"
+        echo "Realtime CPUs: $CPU_LIST"
+    else
+        # Single CPU system
+        echo 0 > /sys/fs/cgroup/cpuset/system/cpus
+        echo "" > /sys/fs/cgroup/cpuset/realtime/cpus
+        echo "Single CPU: assigned to system, realtime cpuset empty"
+    fi
+
+    # Set memory to local node (node 0)
+    echo 0 > /sys/fs/cgroup/cpuset/system/mems 2>/dev/null || true
+    echo 0 > /sys/fs/cgroup/cpuset/realtime/mems 2>/dev/null || true
+
+    # Move current shell to system cpuset to isolate realtime CPUs
+    echo $$ > /sys/fs/cgroup/cpuset/system/tasks 2>/dev/null || true
+}
+
+case "$1" in
+    start)
+        set_cpu_governor
+        setup_cpuset_isolation
+        ;;
+    stop)
+        # Restore default governor? We'll leave as performance for now
+        # Could restore to powersave but we don't know original
+        :
+        ;;
+    restart)
+        $0 stop
+        $0 start
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart}"
+        exit 1
+        ;;
+esac
+
+exit 0

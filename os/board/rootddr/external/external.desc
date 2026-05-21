@@ -1,2 +1,5 @@
 name: rootddr
 desc: RootDDR board external packages
+subdirs:
+  input-wizard
+  ddr-reaper
