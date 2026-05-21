@@ -16,6 +16,9 @@
 # Read-only root — squashfs module so kernel can mount the ROOT_SYSTEM image directly
 CONFIG_SQUASHFS=y
 
+# exFAT filesystem support
+CONFIG_EXFAT_FS=y
+
 # EFI framebuffer — required for VESA video without a DRM driver
 CONFIG_FB_EFI=y
 

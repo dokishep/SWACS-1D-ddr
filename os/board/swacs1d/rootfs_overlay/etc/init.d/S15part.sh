@@ -58,17 +58,23 @@ if ! ls "${DRIVE}"* 2>/dev/null | grep -qv "${DRIVE}"; then
            -t 2:4f68bce3-e8cd-4db1-96e7-fbcaf984b709 \
            "$DRIVE"
 
-    # 3 — ROMS (exFAT data, 8 GB)
-    sgdisk -n 3:4609M:+8192M \
-           -c 3:"ROMS" \
-           -t 3:0727c47a-ab4d-48d1-9968-d70a68e27d30 \
-           "$DRIVE"
+     # 3 — ROMS (exFAT data, 8 GB)
+     sgdisk -n 3:4609M:+8192M \
+            -c 3:"ROMS" \
+            -t 3:0727c47a-ab4d-48d1-9968-d70a68e27d30 \
+            "$DRIVE"
 
-    # 4 — SAVE (exFAT data, 3 GB at tail)
-    sgdisk -n 4:-3072M:0 \
-           -c 4:"SAVE" \
-           -t 4:0727c47a-ab4d-48d1-9968-d70a68e27d30 \
-           "$DRIVE"
+     # 4 — SAVE (exFAT data, 3 GB at tail)
+     sgdisk -n 4:-3072M:0 \
+            -c 4:"SAVE" \
+            -t 4:0727c47a-ab4d-48d1-9968-d70a68e27d30 \
+            "$DRIVE"
+
+     # 5 — SAVE (additional as requested in review)
+     sgdisk -n 5:0:+1G \
+            -c 5:"SAVE" \
+            -t 5:8300 \
+            "$DRIVE"
 
     partprobe "$DRIVE"
     udevadm settle
