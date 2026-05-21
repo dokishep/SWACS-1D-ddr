@@ -1,0 +1,38 @@
+#!/bin/sh
+# S07gadget - USB Gadget Initialization for PS1 Memory Card Emulation
+# Runs early in boot to set up USB OTG gadget
+
+MEMCARD_FILE="/var/data/memcard.bin"
+
+create_memcard_if_needed() {
+    if [ ! -f "$MEMCARD_FILE" ]; then
+        echo "Creating empty PS1 memory card image..."
+        dd if=/dev/zero of="$MEMCARD_FILE" bs=128K count=1 2>/dev/null
+    fi
+}
+
+case "$1" in
+    start)
+        create_memcard_if_needed
+        if [ -x /usr/local/bin/gadget-init.sh ]; then
+            echo "Initializing USB gadget..."
+            /usr/local/bin/gadget-init.sh
+        fi
+        ;;
+    stop)
+        # Unbind gadget if needed
+        if [ -d "/sys/kernel/config/usb_gadget/ps1-memcard" ]; then
+            echo "" > /sys/kernel/config/usb_gadget/ps1-memcard/UDC 2>/dev/null || true
+        fi
+        ;;
+    restart)
+        $0 stop
+        $0 start
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart}"
+        exit 1
+        ;;
+esac
+
+exit 0
