@@ -1,65 +1,34 @@
 #!/bin/sh
-# S07gadget — USB Gadget Initialization for PS1 Memory Card Emulation
-# Runs at init priority S07 to set up the USB OTG gadget using the memory card
-# selected by S10memory_card.sh (runs earlier in the boot sequence).
-#
-# Boot order:
-#   S06usbports   → USB port mapping daemon + hot-plug monitor
-#   S10memory_card.sh → game detection + memory card selection
-#   S07gadget    ← (this script) reads active card and initialises the gadget
+# S07gadget - USB Gadget Initialization for PS1 Memory Card Emulation
+# Runs early in boot to set up USB OTG gadget
 
-ACTIVE_CARD="/var/data/memcard.bin"
-GADGET_INIT="/usr/local/bin/gadget-init.sh"
+MEMCARD_FILE="/var/data/memcard.bin"
+
+create_memcard_if_needed() {
+    if [ ! -f "$MEMCARD_FILE" ]; then
+        echo "Creating empty PS1 memory card image..."
+        dd if=/dev/zero of="$MEMCARD_FILE" bs=128K count=1 2>/dev/null
+    fi
+}
 
 case "$1" in
     start)
-        # S10memory_card.sh runs at S10 (before S07) — read its result.
-        # If it did not set an active card symlink, fall back to the default.
-        if [ ! -f "$ACTIVE_CARD" ] && [ ! -L "$ACTIVE_CARD" ]; then
-            echo "Warning: no active memory card from S10memory_card.sh, creating default..."
-            if [ -x /etc/init.d/S10memory_card.sh ]; then
-                /etc/init.d/S10memory_card.sh start
-            fi
-        fi
-
-        # Pass the resolved active card to gadget-init.sh via -f flag
-        _card_args=""
-        if [ -f "$ACTIVE_CARD" ] || [ -L "$ACTIVE_CARD" ]; then
-            _resolved_readlink=$(readlink -f "$ACTIVE_CARD" 2>/dev/null || readlink "$ACTIVE_CARD")
-            if [ -n "$_resolved_readlink" ]; then
-                _card_args="-f $_resolved_readlink"
-                echo "Active memory card: $(basename "$_resolved_readlink")"
-            fi
-        fi
-
-        if [ -x "$GADGET_INIT" ]; then
-            echo "Initialising USB gadget with game-specific memory card..."
-            eval "$GADGET_INIT $_card_args"
-        else
-            echo "Error: $GADGET_INIT not found or not executable" >&2
-            exit 1
+        create_memcard_if_needed
+        if [ -x /usr/local/bin/gadget-init.sh ]; then
+            echo "Initializing USB gadget..."
+            /usr/local/bin/gadget-init.sh
         fi
         ;;
-
     stop)
-        # Unbind gadget — clean up current and any player-suffixed variants
-        _stop_gadget() {
-            local gad="$1"
-            if [ -d "/sys/kernel/config/usb_gadget/${gad}" ]; then
-                echo "" > "/sys/kernel/config/usb_gadget/${gad}/UDC" 2>/dev/null || true
-                echo "Stopped gadget: ${gad}"
-            fi
-        }
-        _stop_gadget "ps1-memcard"
-        _stop_gadget "ps1-memcard.p1"
-        _stop_gadget "ps1-memcard.p2"
+        # Unbind gadget if needed
+        if [ -d "/sys/kernel/config/usb_gadget/ps1-memcard" ]; then
+            echo "" > /sys/kernel/config/usb_gadget/ps1-memcard/UDC 2>/dev/null || true
+        fi
         ;;
-
     restart)
         $0 stop
         $0 start
         ;;
-
     *)
         echo "Usage: $0 {start|stop|restart}"
         exit 1

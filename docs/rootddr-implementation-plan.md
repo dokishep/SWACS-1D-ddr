@@ -127,38 +127,13 @@ All beads belong under `os/board/rootddr/` and `os/configs/rootddr_defconfig`.
 **Files changed:** `os/configs/rootddr_defconfig`, `os/board/rootddr/kernel.fragment`, `os/board/rootddr/rootfs_overlay/`
 **Tasks:**
 - Kernel fragment additions: CONFIG_USB_GADGET, CONFIG_USB_CONFIGFS, CONFIG_USB_G_MASS_STORAGE, CONFIG_USB_G_HID
-- `gadget-init.sh` (`/usr/local/bin/gadget-init.sh`): composite HID+MS configfs gadget
-  - Accepts `-f /path/to/memcard.bin` to bind a game-specific backing file
-  - Accepts `-p 1|2` to create player-suffixed gadgets on separate UDCs
-  - Falls back to S10memory_card.sh symlink when no `-f` given
-- `S07gadget` (`/etc/init.d/S07gadget`): reads active card from S10memory_card.sh
-  symlink, passes it to `gadget-init.sh`; cleans up player gadgets on stop
+- Add `br2-external` package for gadget setup script: `/usr/local/bin/gadget-init.sh`
+  - Create configfs gadget: composite → HID (keyboard) + Mass Storage → binding to UDC device
+  - Present as PS1 memory card image file via backing file
 
-#### Game-specific memory card selection (S10memory_card.sh)
-| Game range                             | Memory card file | Fallback      |
-|---------------------------------------|-------------------|---------------|
-| DDR 1st Mix – DDR 5th Mix             | DDR.mc            | —             |
-| DDR MAX, DDR MAX2                     | DDRMAX.mc         | DDR.mc        |
-| DDR EXTREME                            | DDREXTREME.mc     | DDR.mc        |
-
-- Detects active game via: active_game.txt → MAME /proc/*/cmdline →
-  .last_game lock file → newest game state file
-- Sets `/var/data/memcard.bin` → `<cardname>` symlink consumed by S07gadget
-
-#### USB port mapping (S06usbports + usb-port-mapper.sh)
-- Config: `/etc/ddr/usb-ports.json` — maps P1/P2 USB 2 and USB 3 bus IDs
-- `usb-port-mapper.sh`: sysfs-based bus scanner; cached state at
-  `/var/data/usb-port-mapper.state`; background poller `hotplug` command
-- `S06usbports`: runs before S07gadget; performs initial scan and starts
-  hot-plug monitor; on bus-list change, re-scans and updates state file
-- `udev/rules.d/99-ddr-usb.rules`: fires `rescan` on MSC add/remove via udev
-
-- On first boot: create blank 128 KB memory card images
-  (`DDR.mc`, `DDRMAX.mc`, `DDREXTREME.mc`) formatted as PS1 `.MCR`
-- Create tool `/usr/local/bin/memcard-dump.sh` / `memcard-restore.sh` to
-  pull/push card save data via OTG
-- Note: Single USB-C OTG port must be shared between game data and memory card;
-  the gadget configfs approach allows hot-swap on same physical port  
+- On first boot: create blank 128 KB memory card image (`/var/data/memcard.bin`) formatted as PS1 `.MCR`
+- Create tool `/usr/local/bin/memcard-dump.sh` / `memcard-restore.sh` to pull/push card save data via OTG
+- Note: Single USB-C OTG port must be shared between game data and memory card; the gadget configfs approach allows hot-swap on same physical port if user removes mass-storage function and re-enables  
 
 ### Bead 6 — Boot/Resume & Watchdog
 **Files changed:** `os/configs/rootddr_defconfig`, `os/board/rootddr/kernel.fragment`, `os/board/rootddr/external/watchdog/`
@@ -268,14 +243,11 @@ BIOS/UEFI
                       └─ [reboot]
                            └─ S16game: mount SCORE, TPM-unseal+GAME mount
                                 └─ S08realtime: CPU governor / isolation
-                                     └─ S06usbports: USB port scan + hot-plug daemon
-                                          └─ S10memory_card.sh: game detection → DDR.mc / DDRMAX.mc / DDREXTREME.mc
-                                               └─ S07gadget: initialise USB gadget with the selected memory card file
-                                                    └─ S10inputwiz: if no input.conf → SDL3 wizard
-                                                         └─ S90gui: xinit → Xorg + start_game.sh
-                                                              └─ start_game.sh: xrandr 640×480 → exec pegasus-fe
-                                                                   └── [selected] exec mame <machine> -state o
-                                                         └─ S91ota: background OTA poller
+                                     └─ S10inputwiz: if no input.conf → SDL3 wizard
+                                          └─ S90gui: xinit → Xorg + start_game.sh
+                                               └─ start_game.sh: xrandr 640×480 → exec pegasus-fe
+                                                    └── [selected] exec mame <machine> -state o
+                                          └─ S91ota: background OTA poller
 ```
 
 ---
@@ -310,18 +282,12 @@ os/
         watchdog/                   ← Buildroot external package (Rust)
       rootfs_overlay/
         etc/
-          ddr/
-            usb-ports.json          ← P1/P2 USB bus ID config (template)
           init.d/
-            S06usbports             ← USB port mapper init (start/stop/status)
             S08realtime             ← CPU governor / isolation
             S10inputwiz             ← first-boot SDL3 input wizard
-            S10memory_card.sh       ← game-specific memory card selection
           asound.conf               ← ALSA low-latency PCM profile
           profile.d/
             input_wizard.sh         ← SDL_GameControllerConfig export
-          udev/rules.d/
-            99-ddr-usb.rules        ← MSC hot-plug → rescan trigger
         usr/
           bin/
             start_pegasus.sh        ← xrandr → pegasus-fe
@@ -332,12 +298,11 @@ os/
               input-wizard          ← SDL3 binary (Beep press → mapping)
               ddr-reaper            ← Process watchdog + state resume
               gadget-init.sh        ← USB gadget (mass-storage + HID)
-              usb-port-mapper.sh    ← USB bus→player map + hot-plug daemon
         opt/
           pegasus/                  ← config/, themes/, metadata/, games/
           game/                     ← mame/, launcher.sh, state/
         var/
-          data/                     ← memcard.bin symlink + DDR.mc/DDRMAX.mc/DDREXTREME.mc
+          data/                     ← .gitkeep; memcard.bin created at boot
         mnt/
           usb/                      ← USB update bundle staging
 
