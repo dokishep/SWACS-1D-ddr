@@ -15,17 +15,29 @@ if [ -z "$DISPLAY" ]; then
     # Try to start a minimal X session
     if [ -x /usr/bin/Xorg ]; then
         /usr/bin/Xorg :0 vt7 -nocursor -quiet -s 0 -dpms &
+        XORG_PID=$!
         sleep 2
         export DISPLAY=:0
+        # Wait for the wizard to complete before killing Xorg
+        if [ -x /usr/local/bin/input-wizard ]; then
+            echo "Starting input mapping wizard..."
+            /usr/local/bin/input-wizard
+        fi
+        # Cleanup: kill Xorg after wizard completes
+        kill $XORG_PID 2>/dev/null
+        wait $XORG_PID 2>/dev/null
+    else
+        echo "Warning: Xorg not found, cannot run GUI wizard"
+        exit 1
     fi
-fi
-
-# Run the input wizard GUI
-if [ -x /usr/local/bin/input-wizard ]; then
-    echo "Starting input mapping wizard..."
-    /usr/local/bin/input-wizard
 else
-    echo "Warning: input-wizard binary not found"
+    # X11 already running, just run the wizard
+    if [ -x /usr/local/bin/input-wizard ]; then
+        echo "Starting input mapping wizard..."
+        /usr/local/bin/input-wizard
+    else
+        echo "Warning: input-wizard binary not found"
+    fi
 fi
 
 exit 0
