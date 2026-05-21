@@ -3,11 +3,11 @@
 # S10memory_card.sh — Boot init script (Swacs 1D • RootDDR v2.0)
 # Handles exFAT memory card redirector for DDR games with PS1-style mcd emulation
 # Implements USB PS1-style mcd + exFAT block-lock + autosync
+#
+# Note: This script assumes the SAVE partition is already mounted by S11save_mount.sh.
+# It runs at S10 to initialize memory card files before the game launcher starts.
 
-# Path Requirements - exFAT path anchor is /mnt/save/ddr_cards
-SAVE_DEV="/dev/disk/by-partlabel/SAVE"
-SAVE_MP="/mnt/save"
-DDR_CARDS_DIR="${SAVE_MP}/ddr_cards"
+DDR_CARDS_DIR="/mnt/save/ddr_cards"
 LOCK_DIR="/var/run/ddr"
 NVRAM_DIR="${DDR_CARDS_DIR}/NVRAM"
 
@@ -21,16 +21,6 @@ MEMCARD_ENV_VAR="MEMCARD_PATH"
 
 log() {
     echo "[S10memory_card] $*"
-}
-
-wait_for_dev() {
-    DEV="$1"; TIMEOUT="${2:-10}"
-    i=0
-    while [ $i -lt "$TIMEOUT" ]; do
-        [ -b "$DEV" ] && return 0
-        sleep 1; i=$((i + 1))
-    done
-    return 1
 }
 
 # Create empty memory card with MAME's memcard format header (128 KB)
@@ -205,21 +195,11 @@ case "$1" in
     start)
         log "Starting memory card initialization"
         
-        # Wait for SAVE partition
-        if ! wait_for_dev "$SAVE_DEV" 15; then
-            log "SAVE partition not found at ${SAVE_DEV} — skipping memory card setup"
+        # Check if SAVE partition is mounted (done by S11save_mount.sh)
+        if [ ! -d "/mnt/save" ]; then
+            log "SAVE partition not mounted yet — deferring to S11save_mount.sh"
             exit 0
         fi
-        
-        # Try kernel exfat driver first, then fuse-exfat fallback
-        if ! mount -t exfat -o rw,noatime,exec "$SAVE_DEV" "${SAVE_MP}" 2>/dev/null; then
-            if ! mount -t exfat-fuse -o rw,noatime,exec "$SAVE_DEV" "${SAVE_MP}" 2>/dev/null; then
-                log "WARNING: Failed to mount SAVE partition. Memory card functionality disabled."
-                exit 0
-            fi
-        fi
-        
-        log "Mounted SAVE partition (exfat)"
         
         # Initialize memory cards (On SAVE-partition mount: scan for DDR.MC and DDRMAX.MC)
         init_memory_cards
