@@ -1,5 +1,10 @@
 #!/bin/sh
 
+# start_warn.sh — X11 fallback screen (genericised, no TPM required)
+# Displayed when the board has no ROMS/SAVE partitions on the boot drive.
+# Used by S12warn at init time — post-S10roms_mount, this confirms a drive
+# has been mounted and that ddr-picker is safe to launch on first boot.
+
 # 1. Configure screen to 640x480 at highest reported refresh rate
 OUTPUT=$(xrandr | grep " connected" | cut -d' ' -f1 | head -n 1)
 if [ -n "$OUTPUT" ]; then
@@ -12,19 +17,17 @@ if [ -n "$OUTPUT" ]; then
 fi
 
 # 2. Display the warning message graphically via xmessage
-xmessage -center -buttons "" -title "SWACS-1D OS - PROVISIONING REQUIRED" "
+xmessage -center -buttons "Continue" -default "Continue" -title "SWACS-1D OS — BOOT" "
 ==================================================
-                    WARNING!
+                    BOOT INIT
 ==================================================
 
-This board has not been initialized/provisioned yet.
+The ROMS/SAVE partitions were not found on the
+boot drive at startup.
 
-For distributor: Now is the time to plug in the
-factory provision USB device to the board.
+If this is your first boot, connect a USB drive
+with the ROMs directory or use SAVE partition.
 
-For operator: Please contact the distributor and
-send the board back to them.
-
-A .bundle file (either patch or upgrade) will NOT WORK!
+Press Continue to proceed to the game picker anyway.
 
 =================================================="

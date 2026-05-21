@@ -1,12 +1,20 @@
 #!/bin/sh
 
-# Only start if the game drive is actually there and mounted
-if [ -d "/opt/game" ]; then
-    echo "Launching game bootstrap..."
-    
+# S90gui — Xorg / MAME launch wrapper (Swacs 1D • RootDDR v2.0)
+# Runs after S10roms_mount / S11save_mount.  S90mame_launcher.sh picks
+# which game to boot (auto-resume vs picker).
+#
+# S90gui is firewalled: if S10roms_mount did NOT mount ROMS the script
+# shows a no-drive X11 screen (start_nodrive.sh) and does NOT attempt to
+# launch MAME (no ROM → no game makes sense).
+
+if [ -b /dev/disk/by-partlabel/ROMS ] || mountpoint -q /mnt/roms 2>/dev/null; then
     (
         while true; do
-            /usr/bin/xinit /usr/bin/start_game.sh -- /usr/bin/Xorg :0 vt7 -nocursor -quiet -s 0 -dpms
+            /usr/bin/xinit \
+                /usr/bin/start_game.sh \
+                -- \
+                /usr/bin/Xorg :0 vt7 -nocursor -quiet -s 0 -dpms
             sleep 1
         done
     ) &
