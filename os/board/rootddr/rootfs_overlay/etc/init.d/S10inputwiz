@@ -1,0 +1,22 @@
+#!/bin/sh
+
+# Input Mapping Wizard — runs on first boot if no input configuration exists
+
+CONFIG_FILE="/var/data/input.conf"
+
+# Only run if we haven't configured input yet
+if [ -f "$CONFIG_FILE" ]; then
+    echo "Input configuration already exists, skipping wizard"
+    exit 0
+fi
+
+# Launch the wizard inside a managed X11 session using xinit
+# xinit starts Xorg, runs the wizard, then exits cleanly when the wizard terminates
+if [ -x /usr/local/bin/input-wizard ]; then
+    echo "Starting input mapping wizard..."
+    xinit /usr/local/bin/input-wizard -- :0 vt7 -nocursor -s 0 -dpms
+else
+    echo "Warning: input-wizard binary not found"
+fi
+
+exit 0
