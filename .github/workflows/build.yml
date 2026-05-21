@@ -1,4 +1,4 @@
-name: Build SWACS-1D OS
+name: Build RootDDR OS
 
 on:
   push:
@@ -24,20 +24,20 @@ jobs:
           sudo apt-get install -y \
             build-essential libncurses5-dev rsync cpio python3 unzip bc \
             wget zstd libssl-dev libelf-dev mtools dosfstools file \
-            curl ca-certificates git zip xz-utils sbsigntool
+            curl ca-certificates git zip xz-utils
 
       - name: Restore Download Cache
         uses: actions/cache/restore@v4
         with:
           path: /home/runner/buildroot_dl
-          key: br-dl-${{ hashFiles('os/configs/swacs1d_defconfig') }}
+          key: br-dl-${{ hashFiles('os/configs/rootddr_defconfig') }}
           restore-keys: br-dl-
 
       - name: Restore Ccache
         uses: actions/cache/restore@v4
         with:
           path: ~/.buildroot-ccache
-          key: br-ccache-${{ hashFiles('os/configs/swacs1d_defconfig') }}
+          key: br-ccache-${{ hashFiles('os/configs/rootddr_defconfig') }}
           restore-keys: br-ccache-
 
       - name: Install Rust
@@ -55,58 +55,7 @@ jobs:
 
           tar -xf musl.tar.xz
 
-          # FIX: Adjusted folder path to match the extracted folder layout shown in your screenshot
           echo "$PWD/x86_64-unknown-linux-musl/bin" >> $GITHUB_PATH
-
-      - name: Build Bootstrap Test Program
-        run: |
-          set -euxo pipefail
-
-          export CC=x86_64-unknown-linux-musl-gcc
-          export CXX=x86_64-unknown-linux-musl-g++
-          export CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=x86_64-unknown-linux-musl-gcc
-
-          cargo build --release \
-            --target x86_64-unknown-linux-musl \
-            --manifest-path authoring/test/Cargo.toml
-            
-      - name: Initialize Cryptographic Keys
-        run: |
-          chmod +x authoring/init_keys.sh
-          ./authoring/init_keys.sh
-
-      - name: Create Factory Provision (v1.00)
-        run: |
-          mkdir -p authoring/factory_payload/keys
-
-          cp authoring/test/target/x86_64-unknown-linux-musl/release/bootstrap \
-             authoring/factory_payload/bootstrap
-
-          echo "100" > authoring/factory_payload/.version
-
-          chmod +x authoring/make_factory_provision.sh
-          cd authoring
-          ./make_factory_provision.sh
-
-      - name: Create Update Bundle (v1.01)
-        run: |
-          mkdir -p authoring/update_files
-
-          cp authoring/test/target/x86_64-unknown-linux-musl/release/bootstrap \
-             authoring/update_files/bootstrap
-
-          cp authoring/example_update.sh authoring/update_files/update.sh
-
-          chmod +x authoring/make_bundle.sh
-          cd authoring
-          ./make_bundle.sh 101
-
-      - name: Zip Provisioning Keys
-        run: |
-          cd authoring
-          cp ../os/board/swacs1d/keys/db.crt .
-          cp ../os/board/swacs1d/keys/db.der .
-          zip test_factory_provision_keys.zip update_private.pem update_public.pem update_aes.key db.crt db.der
 
       - name: Clone Buildroot
         run: |
@@ -114,13 +63,13 @@ jobs:
 
       - name: Prep Board Files
         run: |
-          mkdir -p buildroot/board/swacs1d
+          mkdir -p buildroot/board/rootddr
 
-          cp -r os/board/swacs1d/* buildroot/board/swacs1d/
-          cp os/configs/swacs1d_defconfig buildroot/configs/
+          cp -r os/board/rootddr/* buildroot/board/rootddr/
+          cp os/configs/rootddr_defconfig buildroot/configs/
 
-          find buildroot/board/swacs1d/ -name "*.sh" -exec sed -i 's/\r$//' {} +
-          chmod +x buildroot/board/swacs1d/post-image.sh
+          find buildroot/board/rootddr/ -name "*.sh" -exec sed -i 's/\r$//' {} +
+          chmod +x buildroot/board/rootddr/post-image.sh
 
       - name: Build OS
         run: |
@@ -128,7 +77,7 @@ jobs:
 
           cd buildroot
 
-          make swacs1d_defconfig
+          make rootddr_defconfig
 
           echo 'BR2_DL_DIR="/home/runner/buildroot_dl"' >> .config
 
@@ -139,44 +88,32 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: /home/runner/buildroot_dl
-          key: br-dl-${{ hashFiles('os/configs/swacs1d_defconfig') }}
+          key: br-dl-${{ hashFiles('os/configs/rootddr_defconfig') }}
 
       - name: Save Ccache
         if: always()
         uses: actions/cache/save@v4
         with:
           path: ~/.buildroot-ccache
-          key: br-ccache-${{ hashFiles('os/configs/swacs1d_defconfig') }}
+          key: br-ccache-${{ hashFiles('os/configs/rootddr_defconfig') }}
 
       - name: Compress Image
         run: |
-          xz -T0 -c buildroot/output/images/swacs1d.img \
-            > buildroot/output/images/swacs1d.img.xz
+          xz -T0 -c buildroot/output/images/rootddr.img \
+            > buildroot/output/images/rootddr.img.xz
 
       - name: Upload OS Image Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: SWACS-1D-Image
-          path: buildroot/output/images/swacs1d.img.xz
-
-      - name: Upload Provisioning and Update Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: SWACS-1D-Provisioning-And-Updates
-          path: |
-            authoring/factory_provision.tar.zst
-            authoring/update_v101.bundle
-            authoring/test_factory_provision_keys.zip
+          name: RootDDR-Image
+          path: buildroot/output/images/rootddr.img.xz
 
       - name: Publish Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v1.0.${{ github.run_number }}
-          name: SWACS-1D OS v1.0.${{ github.run_number }}
+          name: RootDDR OS v1.0.${{ github.run_number }}
           draft: false
           prerelease: false
           files: |
-            buildroot/output/images/swacs1d.img.xz
-            authoring/factory_provision.tar.zst
-            authoring/update_v101.bundle
-            authoring/test_factory_provision_keys.zip
+            buildroot/output/images/rootddr.img.xz
